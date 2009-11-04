@@ -14,7 +14,10 @@ $ngt->create();
 
 ########################################
 # try to find a nagios bin
-chomp(my $nagios_bin = `which nagios3`);
+my $nagios_bin;
+chomp($nagios_bin = `which nagios3`);
+chomp($nagios_bin = `which nagios2`) unless defined $nagios_bin;
+chomp($nagios_bin = `which nagios`)  unless defined $nagios_bin;
 SKIP: {
     skip 'no nagios3 bin found in path, skipping config test', 1, if(!defined $nagios_bin or $nagios_bin eq '');
 

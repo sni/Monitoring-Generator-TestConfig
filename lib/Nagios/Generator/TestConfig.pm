@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.01';
+our $VERSION = '0.10';
 
 ########################################
 sub new {
@@ -364,52 +364,31 @@ EOT
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
-Nagios::Generator::TestConfig - Perl extension for blah blah blah
+Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
 
 =head1 SYNOPSIS
 
   use Nagios::Generator::TestConfig;
-  blah blah blah
+  my $ngt = Nagios::Generator::TestConfig->new({ 'output_dir' => '/tmp/test_nagios' });
+  $ngt->create();
 
 =head1 DESCRIPTION
 
-Stub documentation for Nagios::Generator::TestConfig, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
-
-=head2 EXPORT
-
-None by default.
-
-
-
-=head1 SEE ALSO
-
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+This modul generates test configurations for nagios. This can be useful if you
+want for doing load tests or testing nagios addons and plugins.
 
 =head1 AUTHOR
 
-sven, E<lt>sven@nierlein.deE<gt>
+Sven Nierlein, nierlein@cpan.org
 
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2009 by Sven Nierlein
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
+it under the same terms as Perl itself.
 
 =cut
