@@ -1,11 +1,11 @@
 package Nagios::Generator::TestConfig;
 
-use 5.008008;
+use 5.008000;
 use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 ########################################
 sub new {

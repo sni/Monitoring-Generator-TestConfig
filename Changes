@@ -1,5 +1,8 @@
 Revision history for Perl extension Nagios::Generator::TestConfig.
 
+0.11  Thu Nov  5 23:57:17 CET 2009
+	- fixed tests on solaris
+
 0.10  Wed Nov  4 20:15:25 CET 2009
 	- initial release, generates working nagios config
 
