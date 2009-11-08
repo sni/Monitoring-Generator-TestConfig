@@ -9,22 +9,22 @@ our $VERSION = '0.12';
 
 ########################################
 sub new {
-    my $class   = shift;
-    my $options = shift;
+    my($class,%options) = @_;
     my $self = {
                     "verbose"                   => 0,
                     "output_dir"                => undef,
                     "overwrite_dir"             => 0,
                     "hostcount"                 => 10,
-                    "servicecount"              => 10,
+                    "services_per_host"         => 10,
                     "normal_check_interval"     => 1,
                     "retry_check_interval"      => 1,
+                    "nagios_cfg"                => "",
                };
     bless $self, $class;
 
-    for my $opt_key (keys %{$options}) {
+    for my $opt_key (keys %options) {
         if(exists $self->{$opt_key}) {
-            $self->{$opt_key} = $options->{$opt_key};
+            $self->{$opt_key} = $options{$opt_key};
         }
         else {
             croak("unknown option: $opt_key");
@@ -57,8 +57,14 @@ sub create {
     close FH;
 
     # create some missing dirs
-    mkdir($self->{'output_dir'}.'/tmp')          or croak('failed to create tmp dir: '.$!);
-    mkdir($self->{'output_dir'}.'/checkresults') or croak('failed to create checkresults dir: '.$!);
+    if(!-d $self->{'output_dir'}.'/tmp') {
+        mkdir($self->{'output_dir'}.'/tmp')
+            or croak('failed to create tmp dir ('.$self->{'output_dir'}.'/tmp) :' .$!);
+    }
+    if(!-d $self->{'output_dir'}.'/checkresults') {
+        mkdir($self->{'output_dir'}.'/checkresults')
+            or croak('failed to create checkresults dir ('.$self->{'output_dir'}.'/checkresults): '.$!);
+    }
 
     # write out resource.cfg
     open(FH, '>', $self->{'output_dir'}.'/resource.cfg') or die('cannot write: '.$!);
@@ -89,6 +95,8 @@ sub create {
     open(FH, '>', $self->{'output_dir'}.'/timeperiods.cfg') or die('cannot write: '.$!);
     print FH $self->_get_timeperiods_cfg();
     close FH;
+
+    print "exported test config to: $self->{'output_dir'}\n";
 }
 
 
@@ -162,7 +170,7 @@ define service{
 EOT
 
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
-        for(my $y = 0; $y < int($self->{'servicecount'}/$self->{'hostcount'}); $y++) {
+        for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
             $cfg .= "
     define service {
             host_name                       test_host_$x
@@ -358,6 +366,13 @@ debug_verbosity=1
 debug_file=$self->{'output_dir'}/nagios.debug
 max_debug_file_size=1000000
 EOT
+
+    if(defined $self->{'nagios_cfg'} and ref($self->{'nagios_cfg'}) eq 'ARRAY') {
+        $nagios_cfg .= join('\n', @{$self->{'nagios_cfg'}});
+    }
+    elsif(defined $self->{'nagios_cfg'}) {
+        $nagios_cfg .= $self->{'nagios_cfg'};
+    }
     return($nagios_cfg);
 }
 
@@ -372,7 +387,7 @@ Nagios::Generator::TestConfig - Perl extension for generating test nagios config
 =head1 SYNOPSIS
 
   use Nagios::Generator::TestConfig;
-  my $ngt = Nagios::Generator::TestConfig->new({ 'output_dir' => '/tmp/test_nagios' });
+  my $ngt = Nagios::Generator::TestConfig->new( 'output_dir' => '/tmp/test_nagios' );
   $ngt->create();
 
 =head1 DESCRIPTION
