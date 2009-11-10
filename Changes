@@ -1,5 +1,8 @@
 Revision history for Perl extension Nagios::Generator::TestConfig.
 
+0.13  Tue Nov 10 09:35:29 CET 2009
+	- fixed tests, now uses File::Which
+
 0.12  Sat Nov  7 14:37:37 CET 2009
 	- changed way of passing options
 

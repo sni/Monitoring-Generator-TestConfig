@@ -5,7 +5,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'Nagios::Generator::TestConfig',
     VERSION_FROM      => 'lib/Nagios/Generator/TestConfig.pm',
-    PREREQ_PM         => {},
+    PREREQ_PM         => { 'File::Which' => 0 },
     ABSTRACT_FROM     => 'lib/Nagios/Generator/TestConfig.pm',
     AUTHOR            => 'Sven Nierlein <nierlein@cpan.org>',
     $ExtUtils::MakeMaker::VERSION >= 6.31
