@@ -97,6 +97,9 @@ sub new {
 sub create {
     my $self = shift;
 
+    # set open umask, so the webserver can read those files
+    umask(0022);
+
     if(!-e $self->{'output_dir'}) {
         mkdir($self->{'output_dir'}) or croak('failed to create output_dir '.$self->{'output_dir'}.':'.$!);
     }
@@ -107,7 +110,7 @@ sub create {
     close $fh;
 
     # create some missing dirs
-    for my $dir (qw{tmp etc checkresults plugins}) {
+    for my $dir (qw{tmp etc checkresults plugins archives}) {
         if(!-d $self->{'output_dir'}.'/'.$dir) {
             mkdir($self->{'output_dir'}.'/'.$dir)
                 or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
@@ -115,32 +118,32 @@ sub create {
     }
 
     # write out resource.cfg
-    open($fh, '>', $self->{'output_dir'}.'/resource.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/resource.cfg') or die('cannot write: '.$!);
     print $fh '$USER1$='.$self->{'output_dir'}."/plugins";
     close $fh;
 
     # write out hosts.cfg
-    open($fh, '>', $self->{'output_dir'}.'/hosts.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/hosts.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_hosts_cfg();
     close $fh;
 
     # write out services.cfg
-    open($fh, '>', $self->{'output_dir'}.'/services.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/services.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_services_cfg();
     close $fh;
 
     # write out contacts.cfg
-    open($fh, '>', $self->{'output_dir'}.'/contacts.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/contacts.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_contacts_cfg();
     close $fh;
 
     # write out commands.cfg
-    open($fh, '>', $self->{'output_dir'}.'/commands.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/commands.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_commands_cfg();
     close $fh;
 
     # write out timperiods.cfg
-    open($fh, '>', $self->{'output_dir'}.'/timeperiods.cfg') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/etc/timeperiods.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_timeperiods_cfg();
     close $fh;
 
@@ -322,27 +325,27 @@ sub _get_nagios_cfg {
     my $self = shift;
 
     my $nagios_cfg = {
-        'log_file'                                      => $self->{'output_dir'}.'/nagios.log',
+        'log_file'                                      => $self->{'output_dir'}.'/var/nagios.log',
         'cfg_file'                                      => [
-                                                            $self->{'output_dir'}.'/hosts.cfg',
-                                                            $self->{'output_dir'}.'/services.cfg',
-                                                            $self->{'output_dir'}.'/contacts.cfg',
-                                                            $self->{'output_dir'}.'/commands.cfg',
-                                                            $self->{'output_dir'}.'/timeperiods.cfg',
+                                                            $self->{'output_dir'}.'/etc/hosts.cfg',
+                                                            $self->{'output_dir'}.'/etc/services.cfg',
+                                                            $self->{'output_dir'}.'/etc/contacts.cfg',
+                                                            $self->{'output_dir'}.'/etc/commands.cfg',
+                                                            $self->{'output_dir'}.'/etc/timeperiods.cfg',
                                                            ],
-        'object_cache_file'                             => $self->{'output_dir'}.'/objects.cache',
-        'precached_object_file'                         => $self->{'output_dir'}.'/objects.precache',
-        'resource_file'                                 => $self->{'output_dir'}.'/resource.cfg',
-        'status_file'                                   => $self->{'output_dir'}.'/status.dat',
-        'status_update_interval'                        => 10,
+        'object_cache_file'                             => $self->{'output_dir'}.'/var/objects.cache',
+        'precached_object_file'                         => $self->{'output_dir'}.'/var/objects.precache',
+        'resource_file'                                 => $self->{'output_dir'}.'/etc/resource.cfg',
+        'status_file'                                   => $self->{'output_dir'}.'/var/status.dat',
+        'status_update_interval'                        => 30,
         'nagios_user'                                   => 'nagios',
         'nagios_group'                                  => 'nagios',
         'check_external_commands'                       => 1,
         'command_check_interval'                        => -1,
-        'command_file'                                  => $self->{'output_dir'}.'/nagios.cmd',
+        'command_file'                                  => $self->{'output_dir'}.'/var/nagios.cmd',
         'external_command_buffer_slots'                 => 4096,
         'lock_file'                                     => $self->{'output_dir'}.'/nagios3.pid',
-        'temp_file'                                     => $self->{'output_dir'}.'/nagios.tmp',
+        'temp_file'                                     => $self->{'output_dir'}.'/tmp/nagios.tmp',
         'temp_path'                                     => $self->{'output_dir'}.'/tmp',
         'event_broker_options'                          =>-1,
         'log_rotation_method'                           =>'d',
@@ -381,7 +384,7 @@ sub _get_nagios_cfg {
         'ocsp_timeout'                                  => 5,
         'perfdata_timeout'                              => 5,
         'retain_state_information'                      => 1,
-        'state_retention_file'                          => $self->{'output_dir'}.'/retention.dat',
+        'state_retention_file'                          => $self->{'output_dir'}.'/var/retention.dat',
         'retention_update_interval'                     => 60,
         'use_retained_program_state'                    => 1,
         'use_retained_scheduling_info'                  => 1,
@@ -431,7 +434,7 @@ sub _get_nagios_cfg {
         'enable_environment_macros'                     => 1,
         'debug_level'                                   => 0,
         'debug_verbosity'                               => 1,
-        'debug_file'                                    => $self->{'output_dir'}.'/nagios.debug',
+        'debug_file'                                    => $self->{'output_dir'}.'/var/nagios.debug',
         'max_debug_file_size'                           => 1000000,
     };
 
