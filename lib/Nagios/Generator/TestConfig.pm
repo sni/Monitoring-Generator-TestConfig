@@ -113,7 +113,7 @@ sub create {
     close $fh;
 
     # create some missing dirs
-    for my $dir (['tmp', 'etc', 'checkresults', 'plugins']) {
+    for my $dir (qw{tmp etc checkresults plugins}) {
         if(!-d $self->{'output_dir'}.'/'.$dir) {
             mkdir($self->{'output_dir'}.'/'.$dir)
                 or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
@@ -227,7 +227,7 @@ sub _get_services_cfg {
     };
 
     my $merged = $self->_merge_config_hashes($serviceconfig, $self->{'service_settings'});
-    my $cfg    = $self->_create_object_conf('server', $merged);
+    my $cfg    = $self->_create_object_conf('service', $merged);
 
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
@@ -481,13 +481,13 @@ sub _create_object_conf {
     my $self = shift;
     my $type = shift;
     my $conf = shift;
-    my $confstring = 'define '.$type.'{\n';
+    my $confstring = 'define '.$type."{\n";
 
     for my $key (sort keys %{$conf}) {
         my $value = $conf->{$key};
-        $confstring .= sprintf("%-30s", $key)." = ".$value."\n";
+        $confstring .= sprintf("%-30s", $key)." ".$value."\n";
     }
-    $confstring .= '}\n';
+    $confstring .= "}\n";
 
     return($confstring);
 }
