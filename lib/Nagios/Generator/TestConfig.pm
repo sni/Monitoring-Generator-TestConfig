@@ -569,6 +569,8 @@ echo "$HOSTNAME OK: random hostcheck ok ($1/$2/$rand)"
 exit 0;
 ';
 
+    return($testhostcheck);
+
 }
 
 
@@ -678,6 +680,7 @@ echo "$HOSTNAME OK: random servicecheck ok ($1/$2/$rand)"
 exit 0;
 ';
 
+    return($testservicecheck);
 
 }
 
