@@ -7,9 +7,9 @@ use File::Temp qw{ tempdir };
 ########################################
 # try to find a nagios bin
 my $nagios_bin;
-$nagios_bin = which('nagios3') or which('nagios2') or which('nagios');
+$nagios_bin = which('nagios3') or which('nagios');
 if(!defined $nagios_bin) {
-   plan( skip_all => 'no nagios(2,3) bin found in path, skipping config test' );
+   plan( skip_all => 'no nagios(3) bin found in path, skipping config test' );
 } else {
     plan( tests => 3 );
 }
