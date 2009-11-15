@@ -53,14 +53,8 @@ sub new {
                     'hostcount'           => 10,
                     'services_per_host'   => 10,
                     'nagios_cfg'          => undef,
-                    'host_settings'       => {
-                                              'normal_check_interval'     => 1,
-                                              'retry_check_interval'      => 1,
-                                             },
-                    'service_settings'    => {
-                                              'normal_check_interval'     => 1,
-                                              'retry_check_interval'      => 1,
-                                             },
+                    'host_settings'       => undef,
+                    'service_settings'    => undef,
 
                };
     bless $self, $class;
