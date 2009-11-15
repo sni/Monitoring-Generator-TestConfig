@@ -13,8 +13,8 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'services_per_host'         => 20,
                     'normal_check_interval'     => 10,
                     'retry_check_interval'      => 10,
-                    'nagios_cfg'                => [
-                            "broker_module=/tmp/check_mk-1.1.0beta10/livestatus.o /tmp/live.sock",
-                        ],
+                    'nagios_cfg'                => {
+                            'broker_module' => '/tmp/mk-livestatus-1.1.0beta13/livestatus.o /tmp/live.sock',
+                        },
 );
 $ngt->create();

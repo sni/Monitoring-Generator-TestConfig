@@ -1,6 +1,11 @@
 Changes
+examples/create_nagios_test_config.pl
+lib/Nagios/Generator/TestConfig.pm
 Makefile.PL
 MANIFEST
 README
-t/Nagios-Generator-TestConfig.t
-lib/Nagios/Generator/TestConfig.pm
+t/01-Nagios-Generator-TestConfig-internals.t
+t/10-Test-Config-Creation.t
+t/98-Pod-Coverage.t
+t/99-Perl-Critic.t
+t/perlcriticrc
