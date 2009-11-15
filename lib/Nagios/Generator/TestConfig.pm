@@ -462,6 +462,8 @@ sub _config_hash_to_string {
 1;
 __END__
 
+=back
+
 =head1 AUTHOR
 
 Sven Nierlein, nierlein@cpan.org
