@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15_01';
 =head1 NAME
 
 Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
@@ -30,7 +30,14 @@ want for doing load tests or testing nagios addons and plugins.
 Creates an C<Nagios::Generator-TestConfig> object. C<new> takes at least the output_dir.
 Arguments are in key-value pairs.
 
-    verbose                   verbose mode
+    verbose                     verbose mode
+    output_dir                  export directory
+    overwrite_dir               overwrite contents of an existing directory. Default: false
+    hostcount                   amount of hosts of export, Default 10
+    services_per_host           amount of services per host, Default 10
+    host_settings               key/value settings for use in the define host
+    service_settings            key/value settings for use in the define service
+    nagios_cfg                  overwrite/add settings from the nagios.cfg
 
 =back
 
@@ -40,14 +47,21 @@ Arguments are in key-value pairs.
 sub new {
     my($class,%options) = @_;
     my $self = {
-                    "verbose"                   => 0,
-                    "output_dir"                => undef,
-                    "overwrite_dir"             => 0,
-                    "hostcount"                 => 10,
-                    "services_per_host"         => 10,
-                    "normal_check_interval"     => 1,
-                    "retry_check_interval"      => 1,
-                    "nagios_cfg"                => undef,
+                    'verbose'             => 0,
+                    'output_dir'          => undef,
+                    'overwrite_dir'       => 0,
+                    'hostcount'           => 10,
+                    'services_per_host'   => 10,
+                    'nagios_cfg'          => undef,
+                    'host_settings'       => {
+                                              'normal_check_interval'     => 1,
+                                              'retry_check_interval'      => 1,
+                                             },
+                    'service_settings'    => {
+                                              'normal_check_interval'     => 1,
+                                              'retry_check_interval'      => 1,
+                                             },
+
                };
     bless $self, $class;
 
@@ -99,13 +113,11 @@ sub create {
     close $fh;
 
     # create some missing dirs
-    if(!-d $self->{'output_dir'}.'/tmp') {
-        mkdir($self->{'output_dir'}.'/tmp')
-            or croak('failed to create tmp dir ('.$self->{'output_dir'}.'/tmp) :' .$!);
-    }
-    if(!-d $self->{'output_dir'}.'/checkresults') {
-        mkdir($self->{'output_dir'}.'/checkresults')
-            or croak('failed to create checkresults dir ('.$self->{'output_dir'}.'/checkresults): '.$!);
+    for my $dir (['tmp', 'etc', 'checkresults', 'plugins']) {
+        if(!-d $self->{'output_dir'}.'/'.$dir) {
+            mkdir($self->{'output_dir'}.'/'.$dir)
+                or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
+        }
     }
 
     # write out resource.cfg
@@ -147,27 +159,29 @@ sub create {
 ########################################
 sub _get_hosts_cfg {
     my $self = shift;
-    my $cfg = <<EOT;
-define host{
-    name                            generic-host
-    notifications_enabled           1
-    event_handler_enabled           1
-    flap_detection_enabled          1
-    failure_prediction_enabled      1
-    process_perf_data               1
-    retain_status_information       1
-    retain_nonstatus_information    1
-    check_command                   check-host-alive
-    max_check_attempts              10
-    normal_check_interval           $self->{'normal_check_interval'}
-    retry_check_interval            $self->{'retry_check_interval'}
-    notification_interval           0
-    notification_period             24x7
-    notification_options            d,u,r
-    contact_groups                  test_contact
-    register                        0
-}
-EOT
+
+    my $hostconfig = {
+        'name'                           => 'generic-host',
+        'notifications_enabled'          => 1,
+        'event_handler_enabled'          => 1,
+        'flap_detection_enabled'         => 1,
+        'failure_prediction_enabled'     => 1,
+        'process_perf_data'              => 1,
+        'retain_status_information'      => 1,
+        'retain_nonstatus_information'   => 1,
+        'check_command'                  => 'check-host-alive',
+        'max_check_attempts'             => 5,
+        'normal_check_interval'          => 1,
+        'retry_check_interval'           => 1,
+        'notification_interval'          => 0,
+        'notification_period'            => '24x7',
+        'notification_options'           => 'd,u,r',
+        'contact_groups'                 => 'test_contact',
+        'register'                       => 0,
+    };
+
+    my $merged = $self->_merge_config_hashes($hostconfig, $self->{'host_settings'});
+    my $cfg    = $self->_create_object_conf('host', $merged);
 
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         $cfg .= "
@@ -185,33 +199,35 @@ define host {
 ########################################
 sub _get_services_cfg {
     my $self = shift;
-    my $cfg = <<EOT;
-define service{
-    name                            generic-service
-    active_checks_enabled           1
-    passive_checks_enabled          1
-    parallelize_check               1
-    obsess_over_service             1
-    check_freshness                 0
-    notifications_enabled           1
-    event_handler_enabled           1
-    flap_detection_enabled          1
-    failure_prediction_enabled      1
-    process_perf_data               1
-    retain_status_information       1
-    retain_nonstatus_information    1
-    notification_interval           0
-    is_volatile                     0
-    check_period                    24x7
-    normal_check_interval           $self->{'normal_check_interval'}
-    retry_check_interval            $self->{'retry_check_interval'}
-    max_check_attempts              4
-    notification_period             24x7
-    notification_options            w,u,c,r
-    contact_groups                  test_contact
-    register                        0
-}
-EOT
+
+    my $serviceconfig = {
+        'name'                            => 'generic-service',
+        'active_checks_enabled'           => 1,
+        'passive_checks_enabled'          => 1,
+        'parallelize_check'               => 1,
+        'obsess_over_service'             => 1,
+        'check_freshness'                 => 0,
+        'notifications_enabled'           => 1,
+        'event_handler_enabled'           => 1,
+        'flap_detection_enabled'          => 1,
+        'failure_prediction_enabled'      => 1,
+        'process_perf_data'               => 1,
+        'retain_status_information'       => 1,
+        'retain_nonstatus_information'    => 1,
+        'notification_interval'           => 0,
+        'is_volatile'                     => 0,
+        'check_period'                    => '24x7',
+        'normal_check_interval'           => 1,
+        'retry_check_interval'            => 1,
+        'max_check_attempts'              => 3,
+        'notification_period'             => '24x7',
+        'notification_options'            => 'w,u,c,r',
+        'contact_groups'                  => 'test_contact',
+        'register'                        => 0,
+    };
+
+    my $merged = $self->_merge_config_hashes($serviceconfig, $self->{'service_settings'});
+    my $cfg    = $self->_create_object_conf('server', $merged);
 
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
@@ -436,8 +452,8 @@ sub _merge_config_hashes {
     return($merged);
 }
 
-########################################
 
+########################################
 sub _config_hash_to_string {
     my $self = shift;
     my $conf = shift;
@@ -459,10 +475,43 @@ sub _config_hash_to_string {
     return($confstring);
 }
 
+
+########################################
+sub _create_object_conf {
+    my $self = shift;
+    my $type = shift;
+    my $conf = shift;
+    my $confstring = 'define '.$type.'{\n';
+
+    for my $key (sort keys %{$conf}) {
+        my $value = $conf->{$key};
+        $confstring .= sprintf("%-30s", $key)." = ".$value."\n";
+    }
+    $confstring .= '}\n';
+
+    return($confstring);
+}
+
+
 1;
+
 __END__
 
 =back
+
+
+=head1 EXAMPLE
+
+Create a sample config with manually overriden host/service settings and add a broker module:
+
+    use Nagios::Generator::TestConfig;
+    my $ngt = Nagios::Generator::TestConfig->new(
+                        'output_dir'        => '/tmp/nagios-test-conf',
+                        'host_settings'     => { 'normal_check_interval' => 1 },
+                        'service_settings'  => { 'normal_check_interval' => 1 },
+                        'nagios_cfg'        => { 'broker_module' => '/tmp/mk-livestatus-1.1.0beta13/livestatus.o /tmp/live.sock' },
+    );
+    $ngt->create();
 
 =head1 AUTHOR
 
