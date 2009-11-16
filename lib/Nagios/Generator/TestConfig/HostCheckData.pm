@@ -75,12 +75,10 @@ verbose output
 
 =head1 EXAMPLE
 
-./test_servicecheck.pl --minimum-outage=60
-                       --failchance=3%
-                       --previous-state=OK
-                       --state-duration=2500
-                       --total-critical-on-host=0
-                       --total-warning-on-host=0
+./test_hostcheck.pl --minimum-outage=60
+                    --failchance=3%
+                    --previous-state=OK
+                    --state-duration=2500
 
 =head1 AUTHOR
 
@@ -145,7 +143,7 @@ my $hostname = hostname;
 my $rand     = int(rand(100));
 print "random number is $rand\n" if $verbose;
 
-# if the service is currently up, then there is a chance to fail
+# if the host is currently up, then there is a chance to fail
 if($opt_previous_state eq 'OK') {
     if($rand < $opt_failchance) {
         # failed
@@ -156,38 +154,38 @@ if($opt_previous_state eq 'OK') {
         # 60% chance for a critical
         if($rand2 > 60) {
             #sleep(15); # a failed check takes a while
-            print "$hostname CRITICAL: random servicecheck critical\n";
+            print "$hostname CRITICAL: random hostcheck critical\n";
             exit 2;
         }
         # 30% chance for a warning
         if($rand2 > 10) {
             #sleep(10); # a failed check takes a while
-            print "$hostname WARNING: random servicecheck warning\n";
+            print "$hostname WARNING: random hostcheck warning\n";
             exit 1;
         }
 
         # 10% chance for a unknown
-        print "$hostname UNKNOWN: random servicecheck unknown\n";
+        print "$hostname UNKNOWN: random hostcheck unknown\n";
         exit 3;
     }
 }
 else {
     # already hit the minimum outage?
     if($opt_minimum_outage > $opt_state_duration) {
-        print "$hostname $opt_previous_state: random servicecheck minimum outage not reached yet\n";
+        print "$hostname $opt_previous_state: random hostcheck minimum outage not reached yet\n";
         exit $states->{$opt_previous_state};
     }
-    # if the service is currently down, then there is a 30% chance to recover
+    # if the host is currently down, then there is a 30% chance to recover
     elsif($rand < 30) {
-        print "$hostname REVOVERED: random servicecheck recovered\n";
+        print "$hostname REVOVERED: random hostcheck recovered\n";
         exit 0;
     }
     else {
         #sleep(10); # a failed check takes a while
-        print "$hostname $opt_previous_state: random servicecheck unchanged\n";
+        print "$hostname $opt_previous_state: random hostcheck unchanged\n";
         exit $states->{$opt_previous_state};
     }
 }
 
-print "$hostname OK: random servicecheck ok\n";
+print "$hostname OK: random hostcheck ok\n";
 exit 0;
