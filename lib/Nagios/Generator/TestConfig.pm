@@ -133,9 +133,19 @@ sub create {
     print $fh $self->_get_hosts_cfg();
     close $fh;
 
+    # write out hostgroups.cfg
+    open($fh, '>', $self->{'output_dir'}.'/etc/hostgroups.cfg') or die('cannot write: '.$!);
+    print $fh $self->_get_hostgroups_cfg();
+    close $fh;
+
     # write out services.cfg
     open($fh, '>', $self->{'output_dir'}.'/etc/services.cfg') or die('cannot write: '.$!);
     print $fh $self->_get_services_cfg();
+    close $fh;
+
+    # write out servicegroups.cfg
+    open($fh, '>', $self->{'output_dir'}.'/etc/servicegroups.cfg') or die('cannot write: '.$!);
+    print $fh $self->_get_servicegroups_cfg();
     close $fh;
 
     # write out contacts.cfg
@@ -200,6 +210,8 @@ sub _get_hosts_cfg {
 
     my $nr_length = length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
+        my $hostgroup = "uneven";
+        $hostgroup    = "even" if $x%2 == 0;
         my $nr = sprintf("%0".$nr_length."d", $x);
         $cfg .= "
 define host {
@@ -207,9 +219,26 @@ define host {
     alias       test_host_$nr
     use         generic-host
     address     127.0.0.$x
+    hostgroups  $hostgroup
 }";
     }
 
+    return($cfg);
+}
+
+########################################
+sub _get_hostgroups_cfg {
+    my $self = shift;
+    my $cfg = <<EOT;
+define hostgroup {
+    hostgroup_name          even
+    alias                   even
+}
+define hostgroup {
+    hostgroup_name          uneven
+    alias                   uneven
+}
+EOT
     return($cfg);
 }
 
@@ -252,16 +281,40 @@ sub _get_services_cfg {
         my $host_nr = sprintf("%0".$hostnr_length."d", $x);
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
             my $service_nr = sprintf("%0".$servicenr_length."d", $y);
+            my $servicegroup = "servicegroup_01";
+            $servicegroup    = "servicegroup_02" if $y%3 == 1;
+            $servicegroup    = "servicegroup_03" if $y%3 == 2;
             $cfg .= "
 define service {
         host_name                       test_host_$host_nr
         service_description             test_service_$service_nr
         check_command                   check_service
         use                             generic-service
+        servicegroups                   $servicegroup
 }";
         }
     }
 
+    return($cfg);
+}
+
+########################################
+sub _get_servicegroups_cfg {
+    my $self = shift;
+    my $cfg = <<EOT;
+define servicegroup {
+    servicegroup_name       servicegroup_01
+    alias                   servicegroup_01
+}
+define servicegroup {
+    servicegroup_name       servicegroup_02
+    alias                   servicegroup_02
+}
+define servicegroup {
+    servicegroup_name       servicegroup_03
+    alias                   servicegroup_03
+}
+EOT
     return($cfg);
 }
 
@@ -344,6 +397,8 @@ sub _get_nagios_cfg {
                                                             $self->{'output_dir'}.'/etc/contacts.cfg',
                                                             $self->{'output_dir'}.'/etc/commands.cfg',
                                                             $self->{'output_dir'}.'/etc/timeperiods.cfg',
+                                                            $self->{'output_dir'}.'/etc/hostgroups.cfg',
+                                                            $self->{'output_dir'}.'/etc/servicegroups.cfg',
                                                            ],
         'object_cache_file'                             => $self->{'output_dir'}.'/var/objects.cache',
         'precached_object_file'                         => $self->{'output_dir'}.'/var/objects.precache',
