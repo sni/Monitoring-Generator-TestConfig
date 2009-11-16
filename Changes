@@ -2,6 +2,8 @@ Revision history for Perl extension Nagios::Generator::TestConfig.
 
 0.15  Sun Nov 15 16:56:04 CET 2009
 	- added possibility to override all host / service settings
+	- rewritten host / service plugins in perl
+	- moved service / hostplugin data to extra module
 
 0.14  Fri Nov 13 21:42:55 CET 2009
 	- added possibility to override all nagios.cfg settings

@@ -4,6 +4,8 @@ use 5.000000;
 use strict;
 use warnings;
 use Carp;
+use Nagios::Generator::TestConfig::ServiceCheckData;
+use Nagios::Generator::TestConfig::HostCheckData;
 
 our $VERSION = '0.15_01';
 =head1 NAME
@@ -38,6 +40,8 @@ Arguments are in key-value pairs.
     host_settings               key/value settings for use in the define host
     service_settings            key/value settings for use in the define service
     nagios_cfg                  overwrite/add settings from the nagios.cfg
+    hostfailrate                chance of a host to fail, Default 2%
+    servicefailrate             chance of a service to fail, Default 5%
 
 =back
 
@@ -55,6 +59,8 @@ sub new {
                     'nagios_cfg'          => undef,
                     'host_settings'       => undef,
                     'service_settings'    => undef,
+                    'servicefailrate'     => 5,
+                    'hostfailrate'        => 2,
 
                };
     bless $self, $class;
@@ -110,7 +116,7 @@ sub create {
     close $fh;
 
     # create some missing dirs
-    for my $dir (qw{tmp etc checkresults plugins archives}) {
+    for my $dir (qw{tmp etc var checkresults plugins archives}) {
         if(!-d $self->{'output_dir'}.'/'.$dir) {
             mkdir($self->{'output_dir'}.'/'.$dir)
                 or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
@@ -148,16 +154,16 @@ sub create {
     close $fh;
 
     # write out test servicecheck plugin
-    open($fh, '>', $self->{'output_dir'}.'/plugins/test_servicecheck.sh') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/plugins/test_servicecheck.pl') or die('cannot write: '.$!);
     print $fh $self->_get_test_servicecheck();
     close $fh;
-    chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.sh';
+    chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.pl';
 
     # write out test hostcheck plugin
-    open($fh, '>', $self->{'output_dir'}.'/plugins/test_hostcheck.sh') or die('cannot write: '.$!);
+    open($fh, '>', $self->{'output_dir'}.'/plugins/test_hostcheck.pl') or die('cannot write: '.$!);
     print $fh $self->_get_test_hostcheck();
     close $fh;
-    chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.sh';
+    chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
 
     print "exported test config to: $self->{'output_dir'}\n";
 
@@ -283,7 +289,7 @@ sub _get_commands_cfg {
     my $cfg = <<EOT;
 define command{
     command_name    check-host-alive
-    command_line    \$USER1\$/test_hostcheck.sh \$HOSTSTATE\$ \$HOSTDURATIONSEC\$ \$TOTALHOSTSERVICESCRITICAL\$ \$TOTALHOSTSERVICESWARNING\$
+    command_line    \$USER1\$/test_hostcheck.pl --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$
 }
 define command{
     command_name    notify-host
@@ -295,7 +301,7 @@ define command{
 }
 define command{
     command_name    check_service
-    command_line    \$USER1\$/test_servicecheck.sh \$SERVICESTATE\$ \$SERVICEDURATIONSEC\$ \$TOTALHOSTSERVICESCRITICAL\$ \$TOTALHOSTSERVICESWARNING\$
+    command_line    \$USER1\$/test_servicecheck.pl --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$
 }
 EOT
     return($cfg);
@@ -505,73 +511,7 @@ sub _create_object_conf {
 ########################################
 sub _get_test_hostcheck {
     my $self = shift;
-    my $testhostcheck = '
-#!/bin/bash
-#
-# this host check returns a random result based on
-# host macros
-#
-# ex.:
-# ./test_hostcheck.sh UP 500 5
-#
-# Nagios Config:
-#
-# defined command {
-#       command_name  check_host
-#       command_line  $USER1$/test_hostcheck.sh $HOSTSTATE$ $HOSTDURATIONSEC$ $TOTALHOSTSERVICESCRITICAL$ $TOTALHOSTSERVICESWARNING$
-# }
-#
-
-# initialise random number generator
-RANDOM=`date +%N`
-
-# get a number between 0 and 999
-rand=$(($RANDOM / 32))
-
-# let the check take a little time
-sleep 3
-
-# if the host is currently up, then there is a 0.1% chance to fail
-if [ "$1" == "UP" ]; then
-
-  # if there are failed services on this host, the chance to fail is 5% * failed services
-  if [ $3 -gt 0 ]; then
-    if [ $rand -lt $((50 * \$3)) ]; then
-      sleep 15
-      echo "$HOSTNAME CRITICAL: random hostcheck failed ($1/$2/$rand)"
-      exit 2;
-    fi
-  fi
-
-  if [ "$rand" == "0" ]; then
-    sleep 15
-    echo "$HOSTNAME CRITICAL: random hostcheck failed ($1/$2/$rand)"
-    exit 2;
-  fi
-  echo "$HOSTNAME OK: random hostcheck ok ($1/$2/$rand)"
-  exit 0;
-fi
-
-# if the host is currently down, then there is a 90% chance to fail again
-# minumum downtime is 10min
-if [ "$1" == "DOWN" ]; then
-  if [ $2 -lt 600 ]; then
-    sleep 15
-    echo "$HOSTNAME CRITICAL: 10minutes default downtime not yet reached ($1/$2/$rand)"
-    exit 2;
-  fi
-
-  if [ $rand -gt 100 ]; then
-    sleep 15
-    echo "$HOSTNAME CRITICAL: random hostcheck failed again ($1/$2/$rand)"
-    exit 2;
-  fi
-fi
-
-echo "$HOSTNAME OK: random hostcheck ok ($1/$2/$rand)"
-exit 0;
-';
-
+    my $testhostcheck = Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck();
     return($testhostcheck);
 
 }
@@ -580,111 +520,8 @@ exit 0;
 ########################################
 sub _get_test_servicecheck {
     my $self = shift;
-    my $testservicecheck = '
-#!/bin/bash
-#
-# this host check returns a random result based on
-# service macros
-#
-# ex.:
-# ./test_servicecheck.sh OK 500 0 0
-#
-# Nagios Config:
-#
-# defined command {
-#       command_name  check_service
-#       command_line  $USER1$/test_servicecheck.sh $SERVICESTATE$ $SERVICEDURATIONSEC$ $TOTALHOSTSERVICESCRITICAL$ $TOTALHOSTSERVICESWARNING$
-# }
-#
-
-# should the check sleep or immediately exit
-sleep=0
-
-# initialise random number generator
-RANDOM=`date +%N`
-
-# get a number between 0 and 9999
-rand=$(($RANDOM / 3))
-
-# let the check take a little time
-if [ "$sleep" == 1 ]; then
-  sleep 1
-fi
-
-# if the service is currently up, then there is a small chance to fail
-if [ "$1" == "OK" ]; then
-  # if there are already failed services, the chance is higher
-  failChance=1
-  warnChance=3
-  if [ $(($3 + $4)) -gt 0 ]; then
-    failChance=200
-    warnChance=500
-  fi
-
-  if [ $rand -lt $failChance ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 15
-    fi
-    echo "$HOSTNAME CRITICAL: random servicecheck failed ($1/$2/$rand)"
-    exit 2;
-  fi
-  if [ $rand -lt $warnChance ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 10
-    fi
-    echo "$HOSTNAME WARNING: random servicecheck warns ($1/$2/$rand)"
-    exit 1;
-  fi
-  echo "$HOSTNAME OK: random servicecheck ok ($1/$2/$rand)"
-  exit 0;
-fi
-
-# if the service is currently down, then there is a 85% chance to fail again
-# minimum downtime is 3min
-if [ "$1" == "CRITICAL" ]; then
-  if [ $2 -lt 1800 ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 15
-    fi
-    echo "$HOSTNAME CRITICAL: 3minutes default downtime not yet reached ($1/$2/$rand)"
-    exit 2;
-  fi
-
-  if [ $rand -gt 1500 ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 15
-    fi
-    echo "$HOSTNAME CRITICAL: random servicecheck failed again ($1/$2/$rand)"
-    exit 2;
-  fi
-fi
-
-# if the service is currently down, then there is a 85% chance to fail again
-# minimum downtime is 3min
-if [ "$1" == "WARNING" ]; then
-  if [ $2 -lt 1800 ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 10
-    fi
-    echo "$HOSTNAME WARNING: 3minutes default downtime not yet reached ($1/$2/$rand)"
-    exit 1;
-  fi
-
-  if [ $rand -gt 1500 ]; then
-    if [ "$sleep" == 1 ]; then
-      sleep 10
-    fi
-    echo "$HOSTNAME WARNING: random servicecheck warns again ($1/$2/$rand)"
-    exit 1;
-  fi
-fi
-
-echo "$HOSTNAME OK: random servicecheck ok ($1/$2/$rand)"
-exit 0;
-';
-
+    my $testservicecheck = Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck();
     return($testservicecheck);
-
 }
 
 1;
@@ -692,7 +529,6 @@ exit 0;
 __END__
 
 =back
-
 
 =head1 EXAMPLE
 
@@ -709,7 +545,7 @@ Create a sample config with manually overriden host/service settings and add a b
 
 =head1 AUTHOR
 
-Sven Nierlein, nierlein@cpan.org
+Sven Nierlein, <nierlein@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
