@@ -198,11 +198,13 @@ sub _get_hosts_cfg {
     my $merged = $self->_merge_config_hashes($hostconfig, $self->{'host_settings'});
     my $cfg    = $self->_create_object_conf('host', $merged);
 
+    my $nr_length = length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
+        my $nr = sprintf("%0".$nr_length."d", $x);
         $cfg .= "
 define host {
-    host_name   test_host_$x
-    alias       test_host_$x
+    host_name   test_host_$nr
+    alias       test_host_$nr
     use         generic-host
     address     127.0.0.$x
 }";
@@ -244,12 +246,16 @@ sub _get_services_cfg {
     my $merged = $self->_merge_config_hashes($serviceconfig, $self->{'service_settings'});
     my $cfg    = $self->_create_object_conf('service', $merged);
 
+    my $hostnr_length    = length($self->{'hostcount'});
+    my $servicenr_length = length($self->{'services_per_host'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
+        my $host_nr = sprintf("%0".$hostnr_length."d", $x);
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
+            my $service_nr = sprintf("%0".$servicenr_length."d", $y);
             $cfg .= "
 define service {
-        host_name                       test_host_$x
-        service_description             test_service_$y
+        host_name                       test_host_$host_nr
+        service_description             test_service_$service_nr
         check_command                   check_service
         use                             generic-service
 }";
