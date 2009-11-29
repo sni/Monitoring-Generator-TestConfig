@@ -239,6 +239,7 @@ sub _get_hosts_cfg {
         my $active_checks_enabled = "";
         $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
         $cfg .= "
+define host {
     host_name       test_host_$nr
     alias           ".$type."_".$nr."
     use             generic-host
