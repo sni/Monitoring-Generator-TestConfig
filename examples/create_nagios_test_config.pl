@@ -83,8 +83,8 @@ if(!defined $opt_d) {
 
 
 #########################################################################
-my @userinfo     = getpwnam(getlogin());
 my $nagios_user  = getlogin();
+my @userinfo     = getpwnam($nagios_user);
 my @groupinfo    = getgrgid($userinfo[3]);
 my $nagios_group = $groupinfo[0];
 my $ngt = Nagios::Generator::TestConfig->new(
@@ -92,18 +92,18 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
                     'hostcount'                 => 10,
-                    'services_per_host'         => 20,
+                    'services_per_host'         => 5,
                     'nagios_cfg'                => {
-                            'broker_module' => '/tmp/mk-livestatus-1.1.0beta13/livestatus.o /tmp/live.sock',
+                            'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                             'nagios_user'   => $nagios_user,
                             'nagios_group'  => $nagios_group,
                         },
                     'host_settings'             => {
-                            'normal_check_interval' => 10,
+                            'normal_check_interval' => 30,
                             'retry_check_interval'  => 5,
                         },
                     'service_settings'          => {
-                            'normal_check_interval' => 10,
+                            'normal_check_interval' => 30,
                             'retry_check_interval'  => 5,
                         },
 );

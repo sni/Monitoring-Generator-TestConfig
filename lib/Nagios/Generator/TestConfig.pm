@@ -216,7 +216,7 @@ sub _get_hosts_cfg {
         $cfg .= "
 define host {
     host_name   test_host_$nr
-    alias       test_host_$nr
+    alias       test_alias_$nr
     use         generic-host
     address     127.0.0.$x
     hostgroups  $hostgroup
@@ -232,11 +232,11 @@ sub _get_hostgroups_cfg {
     my $cfg = <<EOT;
 define hostgroup {
     hostgroup_name          even
-    alias                   even
+    alias                   even_alias
 }
 define hostgroup {
     hostgroup_name          uneven
-    alias                   uneven
+    alias                   uneven_alias
 }
 EOT
     return($cfg);
@@ -304,15 +304,15 @@ sub _get_servicegroups_cfg {
     my $cfg = <<EOT;
 define servicegroup {
     servicegroup_name       servicegroup_01
-    alias                   servicegroup_01
+    alias                   servicegroup_alias_01
 }
 define servicegroup {
     servicegroup_name       servicegroup_02
-    alias                   servicegroup_02
+    alias                   servicegroup_alias_02
 }
 define servicegroup {
     servicegroup_name       servicegroup_03
-    alias                   servicegroup_03
+    alias                   servicegroup_alias_03
 }
 EOT
     return($cfg);
@@ -324,12 +324,12 @@ sub _get_contacts_cfg {
     my $cfg = <<EOT;
 define contactgroup{
     contactgroup_name       test_contact
-    alias                   test_contacts
+    alias                   test_contacts_alias
     members                 test_contact
 }
 define contact{
     contact_name                    test_contact
-    alias                           test_contact
+    alias                           test_contact_alias
     service_notification_period     24x7
     host_notification_period        24x7
     service_notification_options    w,u,c,r
