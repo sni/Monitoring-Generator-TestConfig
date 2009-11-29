@@ -91,13 +91,15 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'output_dir'                => $opt_d,
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
-                    'hostcount'                 => 10,
-                    'services_per_host'         => 5,
+                    'hostcount'                 => 20,
+                    'services_per_host'         => 20,
                     'nagios_cfg'                => {
                             'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                             'nagios_user'   => $nagios_user,
                             'nagios_group'  => $nagios_group,
                         },
+                    'hostfailrate'              => 2, # percentage
+                    'servicefailrate'           => 5, # percentage
                     'host_settings'             => {
                             'normal_check_interval' => 30,
                             'retry_check_interval'  => 5,
@@ -105,6 +107,22 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'service_settings'          => {
                             'normal_check_interval' => 30,
                             'retry_check_interval'  => 5,
+                        },
+                    'host_types'                => {
+                                    'down'         => 5, # percentage
+                                    'up'           => 50,
+                                    'flap'         => 5,
+                                    'pending'      => 5,
+                                    'random'       => 35,
+                        },
+                    'service_types'             => {
+                                    'ok'           => 50, # percentage
+                                    'warning'      => 5,
+                                    'unknown'      => 5,
+                                    'critical'     => 5,
+                                    'pending'      => 5,
+                                    'flap'         => 5,
+                                    'random'       => 25,
                         },
 );
 $ngt->create();

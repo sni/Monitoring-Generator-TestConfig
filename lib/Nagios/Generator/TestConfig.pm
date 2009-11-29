@@ -4,10 +4,11 @@ use 5.000000;
 use strict;
 use warnings;
 use Carp;
+use POSIX qw(ceil);
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 
-our $VERSION = '0.15_01';
+our $VERSION = '0.15_03';
 =head1 NAME
 
 Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
@@ -42,6 +43,8 @@ Arguments are in key-value pairs.
     nagios_cfg                  overwrite/add settings from the nagios.cfg
     hostfailrate                chance of a host to fail, Default 2%
     servicefailrate             chance of a service to fail, Default 5%
+    host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random
+    service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random
 
 =back
 
@@ -61,8 +64,23 @@ sub new {
                     'service_settings'    => undef,
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
-
-               };
+                    'host_types'          => {
+                                    'down'         => 5,
+                                    'up'           => 50,
+                                    'flap'         => 5,
+                                    'random'       => 35,
+                                    'pending'      => 5,
+                        },
+                    'service_types'       => {
+                                    'ok'           => 50,
+                                    'warning'      => 5,
+                                    'unknown'      => 5,
+                                    'critical'     => 5,
+                                    'pending'      => 5,
+                                    'flap'         => 5,
+                                    'random'       => 25,
+                        },
+                };
     bless $self, $class;
 
     for my $opt_key (keys %options) {
@@ -194,7 +212,6 @@ sub _get_hosts_cfg {
         'process_perf_data'              => 1,
         'retain_status_information'      => 1,
         'retain_nonstatus_information'   => 1,
-        'check_command'                  => 'check-host-alive',
         'max_check_attempts'             => 5,
         'normal_check_interval'          => 1,
         'retry_check_interval'           => 1,
@@ -208,19 +225,27 @@ sub _get_hosts_cfg {
     my $merged = $self->_merge_config_hashes($hostconfig, $self->{'host_settings'});
     my $cfg    = $self->_create_object_conf('host', $merged);
 
+    my @hosttypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'}, $self->{'host_types'}))};
+
     my $nr_length = length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
-        my $hostgroup = "uneven";
-        $hostgroup    = "even" if $x%2 == 0;
-        my $nr = sprintf("%0".$nr_length."d", $x);
+        my $hostgroup = "hostgroup_01";
+        $hostgroup    = "hostgroup_02" if $x%5 == 1;
+        $hostgroup    = "hostgroup_03" if $x%5 == 2;
+        $hostgroup    = "hostgroup_04" if $x%5 == 3;
+        $hostgroup    = "hostgroup_05" if $x%5 == 4;
+        my $nr        = sprintf("%0".$nr_length."d", $x);
+        my $type      = shift @hosttypes;
+        my $active_checks_enabled = "";
+        $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
         $cfg .= "
-define host {
-    host_name   test_host_$nr
-    alias       test_alias_$nr
-    use         generic-host
-    address     127.0.0.$x
-    hostgroups  $hostgroup
-}";
+    host_name       test_host_$nr
+    alias           ".$type."_".$nr."
+    use             generic-host
+    address         127.0.0.$x
+    check_command   check-host-alive!$type
+    hostgroups      $hostgroup
+$active_checks_enabled}";
     }
 
     return($cfg);
@@ -231,12 +256,24 @@ sub _get_hostgroups_cfg {
     my $self = shift;
     my $cfg = <<EOT;
 define hostgroup {
-    hostgroup_name          even
-    alias                   even_alias
+    hostgroup_name          hostgroup_01
+    alias                   hostgroup_alias_01
 }
 define hostgroup {
-    hostgroup_name          uneven
-    alias                   uneven_alias
+    hostgroup_name          hostgroup_02
+    alias                   hostgroup_alias_02
+}
+define hostgroup {
+    hostgroup_name          hostgroup_03
+    alias                   hostgroup_alias_03
+}
+define hostgroup {
+    hostgroup_name          hostgroup_04
+    alias                   hostgroup_alias_04
+}
+define hostgroup {
+    hostgroup_name          hostgroup_05
+    alias                   hostgroup_alias_05
 }
 EOT
     return($cfg);
@@ -275,23 +312,30 @@ sub _get_services_cfg {
     my $merged = $self->_merge_config_hashes($serviceconfig, $self->{'service_settings'});
     my $cfg    = $self->_create_object_conf('service', $merged);
 
+    my @servicetypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'} * $self->{'services_per_host'}, $self->{'service_types'}))};
+
     my $hostnr_length    = length($self->{'hostcount'});
     my $servicenr_length = length($self->{'services_per_host'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         my $host_nr = sprintf("%0".$hostnr_length."d", $x);
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
-            my $service_nr = sprintf("%0".$servicenr_length."d", $y);
+            my $service_nr   = sprintf("%0".$servicenr_length."d", $y);
             my $servicegroup = "servicegroup_01";
-            $servicegroup    = "servicegroup_02" if $y%3 == 1;
-            $servicegroup    = "servicegroup_03" if $y%3 == 2;
+            $servicegroup    = "servicegroup_02" if $y%5 == 1;
+            $servicegroup    = "servicegroup_03" if $y%5 == 2;
+            $servicegroup    = "servicegroup_04" if $y%5 == 3;
+            $servicegroup    = "servicegroup_05" if $y%5 == 4;
+            my $type         = shift @servicetypes;
+            my $active_checks_enabled = "";
+            $active_checks_enabled    = "        active_checks_enabled           0\n" if $type eq 'pending';
             $cfg .= "
 define service {
         host_name                       test_host_$host_nr
-        service_description             test_service_$service_nr
-        check_command                   check_service
+        service_description             test_".$type."_$service_nr
+        check_command                   check_service!$type
         use                             generic-service
         servicegroups                   $servicegroup
-}";
+$active_checks_enabled}";
         }
     }
 
@@ -313,6 +357,14 @@ define servicegroup {
 define servicegroup {
     servicegroup_name       servicegroup_03
     alias                   servicegroup_alias_03
+}
+define servicegroup {
+    servicegroup_name       servicegroup_04
+    alias                   servicegroup_alias_04
+}
+define servicegroup {
+    servicegroup_name       servicegroup_05
+    alias                   servicegroup_alias_05
 }
 EOT
     return($cfg);
@@ -348,7 +400,7 @@ sub _get_commands_cfg {
     my $cfg = <<EOT;
 define command{
     command_name    check-host-alive
-    command_line    \$USER1\$/test_hostcheck.pl --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$
+    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$
 }
 define command{
     command_name    notify-host
@@ -360,7 +412,7 @@ define command{
 }
 define command{
     command_name    check_service
-    command_line    \$USER1\$/test_servicecheck.pl --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$
+    command_line    \$USER1\$/test_servicecheck.pl --type=\$ARG1\$ --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$
 }
 EOT
     return($cfg);
@@ -583,6 +635,35 @@ sub _get_test_servicecheck {
     my $self = shift;
     my $testservicecheck = Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck();
     return($testservicecheck);
+}
+
+########################################
+sub _fisher_yates_shuffle {
+    my $self  = shift;
+    my $array = shift;
+    my $i;
+    for ($i = @$array; --$i; ) {
+        my $j = int rand ($i+1);
+        next if $i == $j;
+        @$array[$i,$j] = @$array[$j,$i];
+    }
+    return($array);
+}
+
+########################################
+sub _get_types {
+    my $self  = shift;
+    my $count = shift;
+    my $types = shift;
+
+    my @types;
+    for my $type (keys %{$types}) {
+        my $perc = $types->{$type};
+        for(1..ceil($count/100*$perc)) {
+            push @types, $type;
+        }
+    }
+    return(\@types);
 }
 
 1;
