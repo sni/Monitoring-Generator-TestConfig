@@ -36,6 +36,7 @@ test_hostcheck.pl - host check replacement for testing purposes
 =head1 SYNOPSIS
 
 ./test_hostcheck.pl [ -v ] [ -h ]
+                    [ --type=<type>                 ]
                     [ --minimum-outage=<seconds>    ]
                     [ --failchance=<percentage>     ]
                     [ --previous-state=<state>      ]
@@ -71,6 +72,12 @@ print help and exit
 
 verbose output
 
+=item type
+
+    --type
+
+can be one of up,down,unreachable,random,flap
+
 =back
 
 =head1 EXAMPLE
@@ -94,11 +101,12 @@ use Sys::Hostname;
 
 #########################################################################
 # parse and check cmd line arguments
-my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration );
+my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type );
 Getopt::Long::Configure('no_ignore_case');
 if(!GetOptions (
    "h"                        => \$opt_h,
    "v"                        => \$opt_v,
+   "type=s"                   => \$opt_type,
    "minimum-outage=i"         => \$opt_minimum_outage,
    "failchance=s"             => \$opt_failchance,
    "previous-state=s"         => \$opt_previous_state,
@@ -140,11 +148,34 @@ my $states = {
 
 #########################################################################
 my $hostname = hostname;
+
+#########################################################################
+# not a random check?
+if(defined $opt_type and lc $opt_type ne 'random') {
+    if(lc $opt_type eq 'up') {
+        print "$hostname OK: ok hostcheck\n";
+        exit 0;
+    }
+    if(lc $opt_type eq 'down') {
+        print "$hostname DOWN: down hostcheck\n";
+        exit 2;
+    }
+    if(lc $opt_type eq 'flap') {
+        if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
+            print "$hostname FLAP: flap hostcheck down\n";
+            exit 2;
+        }
+        print "$hostname FLAP: flap hostcheck up\n";
+        exit 0;
+    }
+}
+
+#########################################################################
 my $rand     = int(rand(100));
 print "random number is $rand\n" if $verbose;
 
 # if the host is currently up, then there is a chance to fail
-if($opt_previous_state eq 'OK') {
+if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
     if($rand < $opt_failchance) {
         # failed
 
