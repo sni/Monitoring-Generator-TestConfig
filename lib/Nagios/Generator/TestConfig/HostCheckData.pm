@@ -29,6 +29,8 @@ sub get_test_hostcheck {
 __DATA__
 #!/usr/bin/env perl
 
+# nagios: +epn
+
 =head1 NAME
 
 test_hostcheck.pl - host check replacement for testing purposes
@@ -100,123 +102,129 @@ use Pod::Usage;
 use Sys::Hostname;
 
 #########################################################################
-# parse and check cmd line arguments
-my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type );
-Getopt::Long::Configure('no_ignore_case');
-if(!GetOptions (
-   "h"                        => \$opt_h,
-   "v"                        => \$opt_v,
-   "type=s"                   => \$opt_type,
-   "minimum-outage=i"         => \$opt_minimum_outage,
-   "failchance=s"             => \$opt_failchance,
-   "previous-state=s"         => \$opt_previous_state,
-   "state-duration=i"         => \$opt_state_duration,
-)) {
-    pod2usage( { -verbose => 1, -message => 'error in options' } );
-    exit 3;
-}
-
-if(defined $opt_h) {
-    pod2usage( { -verbose => 1 } );
-    exit 3;
-}
-my $verbose = 0;
-if(defined $opt_v) {
-    $verbose = 1;
-}
-if($opt_failchance =~ m/^(\d+)%/) {
-    $opt_failchance = $1;
-} else {
-    pod2usage( { -verbose => 1, -message => 'failchance must be a percentage' } );
-    exit 3;
-}
+do_check();
 
 #########################################################################
-# Set Defaults
-$opt_minimum_outage = 0    if !defined $opt_minimum_outage;
-$opt_failchance     = 5    if !defined $opt_failchance;
-$opt_previous_state = 'UP' if !defined $opt_previous_state;
-
-#########################################################################
-my $states = {
-    'UP'    => 0,
-    'DOWN'  => 1,
-    'DOWN'  => 2,
-    'DOWN'  => 3,
-    'DOWN'  => 4,
-};
-
-#########################################################################
-my $hostname = hostname;
-
-#########################################################################
-# not a random check?
-if(defined $opt_type and lc $opt_type ne 'random') {
-    if(lc $opt_type eq 'up') {
-        print "$hostname OK: ok hostcheck\n";
-        exit 0;
-    }
-    if(lc $opt_type eq 'down') {
-        print "$hostname DOWN: down hostcheck\n";
-        exit 2;
-    }
-    if(lc $opt_type eq 'flap') {
-        if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
-            print "$hostname FLAP: flap hostcheck down\n";
-            exit 2;
-        }
-        print "$hostname FLAP: flap hostcheck up\n";
-        exit 0;
-    }
-}
-
-#########################################################################
-my $rand     = int(rand(100));
-print "random number is $rand\n" if $verbose;
-
-# if the host is currently up, then there is a chance to fail
-if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
-    if($rand < $opt_failchance) {
-        # failed
-
-        # warning critical or unknown?
-        my $rand2 = int(rand(100));
-
-        # 60% chance for a critical
-        if($rand2 > 60) {
-            #sleep(15); # a failed check takes a while
-            print "$hostname CRITICAL: random hostcheck critical\n";
-            exit 2;
-        }
-        # 30% chance for a warning
-        if($rand2 > 10) {
-            #sleep(10); # a failed check takes a while
-            print "$hostname WARNING: random hostcheck warning\n";
-            exit 1;
-        }
-
-        # 10% chance for a unknown
-        print "$hostname UNKNOWN: random hostcheck unknown\n";
+sub do_check {
+    ######################################################################
+    # parse and check cmd line arguments
+    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type );
+    Getopt::Long::Configure('no_ignore_case');
+    if(!GetOptions (
+       "h"                        => \$opt_h,
+       "v"                        => \$opt_v,
+       "type=s"                   => \$opt_type,
+       "minimum-outage=i"         => \$opt_minimum_outage,
+       "failchance=s"             => \$opt_failchance,
+       "previous-state=s"         => \$opt_previous_state,
+       "state-duration=i"         => \$opt_state_duration,
+    )) {
+        pod2usage( { -verbose => 1, -message => 'error in options' } );
         exit 3;
     }
-}
-else {
-    # already hit the minimum outage?
-    if($opt_minimum_outage > $opt_state_duration) {
-        print "$hostname $opt_previous_state: random hostcheck minimum outage not reached yet\n";
-        exit $states->{$opt_previous_state};
+
+    if(defined $opt_h) {
+        pod2usage( { -verbose => 1 } );
+        exit 3;
     }
-    # if the host is currently down, then there is a 30% chance to recover
-    elsif($rand < 30) {
-        print "$hostname REVOVERED: random hostcheck recovered\n";
-        exit 0;
+    my $verbose = 0;
+    if(defined $opt_v) {
+        $verbose = 1;
+    }
+    if($opt_failchance =~ m/^(\d+)%/) {
+        $opt_failchance = $1;
+    } else {
+        pod2usage( { -verbose => 1, -message => 'failchance must be a percentage' } );
+        exit 3;
+    }
+
+    #########################################################################
+    # Set Defaults
+    $opt_minimum_outage = 0    if !defined $opt_minimum_outage;
+    $opt_failchance     = 5    if !defined $opt_failchance;
+    $opt_previous_state = 'UP' if !defined $opt_previous_state;
+
+    #########################################################################
+    my $states = {
+        'UP'    => 0,
+        'DOWN'  => 1,
+        'DOWN'  => 2,
+        'DOWN'  => 3,
+        'DOWN'  => 4,
+    };
+
+    #########################################################################
+    my $hostname = hostname;
+
+    #########################################################################
+    # not a random check?
+    if(defined $opt_type and lc $opt_type ne 'random') {
+        if(lc $opt_type eq 'up') {
+            print "$hostname OK: ok hostcheck\n";
+            exit 0;
+        }
+        if(lc $opt_type eq 'down') {
+            print "$hostname DOWN: down hostcheck\n";
+            exit 2;
+        }
+        if(lc $opt_type eq 'flap') {
+            if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
+                print "$hostname FLAP: flap hostcheck down\n";
+                exit 2;
+            }
+            print "$hostname FLAP: flap hostcheck up\n";
+            exit 0;
+        }
+    }
+
+    #########################################################################
+    my $rand     = int(rand(100));
+    print "random number is $rand\n" if $verbose;
+
+    # if the host is currently up, then there is a chance to fail
+    if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
+        if($rand < $opt_failchance) {
+            # failed
+
+            # warning critical or unknown?
+            my $rand2 = int(rand(100));
+
+            # 60% chance for a critical
+            if($rand2 > 60) {
+                #sleep(15); # a failed check takes a while
+                print "$hostname CRITICAL: random hostcheck critical\n";
+                exit 2;
+            }
+            # 30% chance for a warning
+            if($rand2 > 10) {
+                #sleep(10); # a failed check takes a while
+                print "$hostname WARNING: random hostcheck warning\n";
+                exit 1;
+            }
+
+            # 10% chance for a unknown
+            print "$hostname UNKNOWN: random hostcheck unknown\n";
+            exit 3;
+        }
     }
     else {
-        #sleep(10); # a failed check takes a while
-        print "$hostname $opt_previous_state: random hostcheck unchanged\n";
-        exit $states->{$opt_previous_state};
+        # already hit the minimum outage?
+        if($opt_minimum_outage > $opt_state_duration) {
+            print "$hostname $opt_previous_state: random hostcheck minimum outage not reached yet\n";
+            exit $states->{$opt_previous_state};
+        }
+        # if the host is currently down, then there is a 30% chance to recover
+        elsif($rand < 30) {
+            print "$hostname REVOVERED: random hostcheck recovered\n";
+            exit 0;
+        }
+        else {
+            #sleep(10); # a failed check takes a while
+            print "$hostname $opt_previous_state: random hostcheck unchanged\n";
+            exit $states->{$opt_previous_state};
+        }
     }
-}
 
-print "$hostname OK: random hostcheck ok\n";
-exit 0;
+    print "$hostname OK: random hostcheck ok\n";
+    exit 0;
+}
