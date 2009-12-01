@@ -558,6 +558,8 @@ sub _get_nagios_cfg {
         'max_debug_file_size'                           => 1000000,
     };
 
+    $nagios_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'host_count'} * $self->{'services_per_host'} > 2000);
+
     my $merged     = $self->_merge_config_hashes($nagios_cfg, $self->{'nagios_cfg'});
     my $confstring = $self->_config_hash_to_string($merged);
     return($confstring);
