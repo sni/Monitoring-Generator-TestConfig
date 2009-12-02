@@ -8,7 +8,7 @@ use POSIX qw(ceil);
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 
-our $VERSION = '0.15_04';
+our $VERSION = '0.16';
 =head1 NAME
 
 Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
@@ -677,16 +677,48 @@ __END__
 
 =head1 EXAMPLE
 
-Create a sample config with manually overriden host/service settings and add a broker module:
+Create a sample config with manually overriden host/service settings:
 
     use Nagios::Generator::TestConfig;
     my $ngt = Nagios::Generator::TestConfig->new(
-                        'output_dir'        => '/tmp/nagios-test-conf',
-                        'host_settings'     => { 'normal_check_interval' => 1 },
-                        'service_settings'  => { 'normal_check_interval' => 1 },
-                        'nagios_cfg'        => { 'broker_module' => '/tmp/mk-livestatus-1.1.0beta13/livestatus.o /tmp/live.sock' },
+                        'output_dir'                => '/tmp/nagios-test-conf',
+                        'verbose'                   => 1,
+                        'overwrite_dir'             => 1,
+                        'hostcount'                 => 50,
+                        'services_per_host'         => 20,
+                        'nagios_cfg'                => {
+                                'nagios_user'   => 'nagios',
+                                'nagios_group'  => 'nagios',
+                            },
+                        'hostfailrate'              => 2, # percentage (only for the random ones)
+                        'servicefailrate'           => 5, # percentage (only for the random ones)
+                        'host_settings'             => {
+                                'normal_check_interval' => 10,
+                                'retry_check_interval'  => 1,
+                            },
+                        'service_settings'          => {
+                                'normal_check_interval' => 10,
+                                'retry_check_interval'  => 2,
+                            },
+                        'host_types'                => {
+                                        'down'         => 5, # percentage
+                                        'up'           => 50,
+                                        'flap'         => 5,
+                                        'pending'      => 5,
+                                        'random'       => 35,
+                            },
+                        'service_types'             => {
+                                        'ok'           => 50, # percentage
+                                        'warning'      => 5,
+                                        'unknown'      => 5,
+                                        'critical'     => 5,
+                                        'pending'      => 5,
+                                        'flap'         => 5,
+                                        'random'       => 25,
+                            },
     );
     $ngt->create();
+
 
 =head1 AUTHOR
 
