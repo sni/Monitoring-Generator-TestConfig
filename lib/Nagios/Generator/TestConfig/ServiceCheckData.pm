@@ -208,13 +208,17 @@ sub do_check {
 
             # 60% chance for a critical
             if($rand2 > 60) {
-                #sleep(15); # a failed check takes a while
+                # a failed check takes a while
+                my $sleep = 5 + int(rand(20));
+                sleep($sleep);
                 print "$hostname CRITICAL: random servicecheck critical\n";
                 exit 2;
             }
             # 30% chance for a warning
             if($rand2 > 10) {
-                #sleep(10); # a failed check takes a while
+                # a failed check takes a while
+                my $sleep = 5 + int(rand(20));
+                sleep($sleep);
                 print "$hostname WARNING: random servicecheck warning\n";
                 exit 1;
             }
@@ -236,7 +240,9 @@ sub do_check {
             exit 0;
         }
         else {
-            #sleep(10); # a failed check takes a while
+            # a failed check takes a while
+            my $sleep = 5 + int(rand(20));
+            sleep($sleep);
             print "$hostname $opt_previous_state: random servicecheck unchanged\n";
             exit $states->{$opt_previous_state};
         }

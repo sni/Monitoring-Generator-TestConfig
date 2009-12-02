@@ -8,7 +8,7 @@ use POSIX qw(ceil);
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 
-our $VERSION = '0.15_03';
+our $VERSION = '0.15_04';
 =head1 NAME
 
 Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
@@ -558,7 +558,7 @@ sub _get_nagios_cfg {
         'max_debug_file_size'                           => 1000000,
     };
 
-    $nagios_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'host_count'} * $self->{'services_per_host'} > 2000);
+    $nagios_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'hostcount'} * $self->{'services_per_host'} > 2000);
 
     my $merged     = $self->_merge_config_hashes($nagios_cfg, $self->{'nagios_cfg'});
     my $confstring = $self->_config_hash_to_string($merged);

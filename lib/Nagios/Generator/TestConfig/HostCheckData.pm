@@ -169,6 +169,9 @@ sub do_check {
         }
         if(lc $opt_type eq 'flap') {
             if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
+                # a failed check takes a while
+                my $sleep = 2 + int(rand(5));
+                sleep($sleep);
                 print "$hostname FLAP: flap hostcheck down\n";
                 exit 2;
             }
@@ -191,13 +194,17 @@ sub do_check {
 
             # 60% chance for a critical
             if($rand2 > 60) {
-                #sleep(15); # a failed check takes a while
+                # a failed check takes a while
+                my $sleep = 2 + int(rand(5));
+                sleep($sleep);
                 print "$hostname CRITICAL: random hostcheck critical\n";
                 exit 2;
             }
             # 30% chance for a warning
             if($rand2 > 10) {
-                #sleep(10); # a failed check takes a while
+                # a failed check takes a while
+                my $sleep = 2 + int(rand(5));
+                sleep($sleep);
                 print "$hostname WARNING: random hostcheck warning\n";
                 exit 1;
             }
@@ -219,7 +226,9 @@ sub do_check {
             exit 0;
         }
         else {
-            #sleep(10); # a failed check takes a while
+            # a failed check takes a while
+            my $sleep = 2 + int(rand(5));
+            sleep($sleep);
             print "$hostname $opt_previous_state: random hostcheck unchanged\n";
             exit $states->{$opt_previous_state};
         }
