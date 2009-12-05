@@ -248,6 +248,20 @@ sub _get_hosts_cfg {
         my $active_checks_enabled = "";
         push @router, "test_router_$nr";
         $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
+
+        # first router gets additional infos
+        my $extra = "";
+        if($x == 0) {
+            $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
+    notes          just a notes string
+    icon_image_alt icon alt string
+    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+        }
+        if($x == 1) {
+            $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
+    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+        }
+
         $cfg .= "
 define host {
     host_name       test_router_$nr
@@ -256,7 +270,8 @@ define host {
     address         127.0.$x.1
     check_command   check-host-alive!$type
     hostgroups      $hostgroup
-$active_checks_enabled}";
+    icon_image      ../../docs/images/switch.png
+$active_checks_enabled$extra}";
     }
 
     # hosts
@@ -396,6 +411,21 @@ sub _get_services_cfg {
             my $type         = shift @servicetypes;
             my $active_checks_enabled = "";
             $active_checks_enabled    = "        active_checks_enabled           0\n" if $type eq 'pending';
+
+            # first router gets additional infos
+            my $extra = "";
+            if($y == 0) {
+                $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
+    notes          just a notes string
+    icon_image_alt icon alt string
+    icon_image      ../../docs/images/tip.gif
+    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+            }
+            if($y == 1) {
+                $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
+    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+            }
+
             $cfg .= "
 define service {
         host_name                       test_host_$host_nr
@@ -403,7 +433,7 @@ define service {
         check_command                   check_service!$type
         use                             generic-service
         servicegroups                   $servicegroup,$type
-$active_checks_enabled}";
+$active_checks_enabled$extra}";
         }
     }
 
