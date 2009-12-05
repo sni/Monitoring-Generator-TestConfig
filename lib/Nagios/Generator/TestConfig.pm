@@ -8,7 +8,8 @@ use POSIX qw(ceil);
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 
-our $VERSION = '0.16';
+our $VERSION = '0.18';
+
 =head1 NAME
 
 Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
@@ -36,7 +37,8 @@ Arguments are in key-value pairs.
     verbose                     verbose mode
     output_dir                  export directory
     overwrite_dir               overwrite contents of an existing directory. Default: false
-    hostcount                   amount of hosts of export, Default 10
+    hostcount                   amount of hosts to export, Default 10
+    routercount                 amount of router to export, Default 5 ( exported as host and used as parent )
     services_per_host           amount of services per host, Default 10
     host_settings               key/value settings for use in the define host
     service_settings            key/value settings for use in the define service
@@ -44,6 +46,7 @@ Arguments are in key-value pairs.
     hostfailrate                chance of a host to fail, Default 2%
     servicefailrate             chance of a service to fail, Default 5%
     host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random
+    router_types                key/value settings for percentage of hosttypes for router
     service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random
 
 =back
@@ -57,6 +60,7 @@ sub new {
                     'verbose'             => 0,
                     'output_dir'          => undef,
                     'overwrite_dir'       => 0,
+                    'routercount'         => 5,
                     'hostcount'           => 10,
                     'services_per_host'   => 10,
                     'nagios_cfg'          => undef,
@@ -64,6 +68,13 @@ sub new {
                     'service_settings'    => undef,
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
+                    'router_types'        => {
+                                    'down'         => 20,
+                                    'up'           => 20,
+                                    'flap'         => 20,
+                                    'random'       => 20,
+                                    'pending'      => 20,
+                        },
                     'host_types'          => {
                                     'down'         => 5,
                                     'up'           => 50,
@@ -224,10 +235,34 @@ sub _get_hosts_cfg {
 
     my $merged = $self->_merge_config_hashes($hostconfig, $self->{'host_settings'});
     my $cfg    = $self->_create_object_conf('host', $merged);
+    my @router;
 
+    # router
+    my @routertypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'routercount'}, $self->{'router_types'}))};
+
+    my $nr_length = length($self->{'routercount'});
+    for(my $x = 0; $x < $self->{'routercount'}; $x++) {
+        my $hostgroup = "router";
+        my $nr        = sprintf("%0".$nr_length."d", $x);
+        my $type      = shift @routertypes;
+        my $active_checks_enabled = "";
+        push @router, "test_router_$nr";
+        $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
+        $cfg .= "
+define host {
+    host_name       test_router_$nr
+    alias           ".$type."_".$nr."
+    use             generic-host
+    address         127.0.$x.1
+    check_command   check-host-alive!$type
+    hostgroups      $hostgroup
+$active_checks_enabled}";
+    }
+
+    # hosts
     my @hosttypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'}, $self->{'host_types'}))};
 
-    my $nr_length = length($self->{'hostcount'});
+    $nr_length = length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         my $hostgroup = "hostgroup_01";
         $hostgroup    = "hostgroup_02" if $x%5 == 1;
@@ -237,16 +272,24 @@ sub _get_hosts_cfg {
         my $nr        = sprintf("%0".$nr_length."d", $x);
         my $type      = shift @hosttypes;
         my $active_checks_enabled = "";
-        $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
+        $active_checks_enabled = "    active_checks_enabled  0\n" if $type eq 'pending';
+        my $parents = "";
+        my $num_router = scalar @router + 1;
+        my $cur_router = $x % $num_router;
+        my $check   = "    check_command          check-host-alive!$type";
+        if(defined $router[$cur_router]) {
+            $parents = "    parents                ".$router[$cur_router]."\n";
+            $check   = "    check_command          check-host-alive-parent!$type!\$HOSTSTATE:".$router[$cur_router]."\$";
+        }
         $cfg .= "
 define host {
-    host_name       test_host_$nr
-    alias           ".$type."_".$nr."
-    use             generic-host
-    address         127.0.0.$x
-    check_command   check-host-alive!$type
-    hostgroups      $hostgroup
-$active_checks_enabled}";
+    host_name              test_host_$nr
+    alias                  ".$type."_".$nr."
+    use                    generic-host
+    address                127.0.$cur_router.".($x + 1)."
+    hostgroups             $hostgroup,$type
+$check
+$active_checks_enabled$parents}";
     }
 
     return($cfg);
@@ -256,6 +299,10 @@ $active_checks_enabled}";
 sub _get_hostgroups_cfg {
     my $self = shift;
     my $cfg = <<EOT;
+define hostgroup {
+    hostgroup_name          router
+    alias                   All Router Hosts
+}
 define hostgroup {
     hostgroup_name          hostgroup_01
     alias                   hostgroup_alias_01
@@ -275,6 +322,26 @@ define hostgroup {
 define hostgroup {
     hostgroup_name          hostgroup_05
     alias                   hostgroup_alias_05
+}
+define hostgroup {
+    hostgroup_name          up
+    alias                   All Up Hosts
+}
+define hostgroup {
+    hostgroup_name          down
+    alias                   All Down Hosts
+}
+define hostgroup {
+    hostgroup_name          flap
+    alias                   All Flapping Hosts
+}
+define hostgroup {
+    hostgroup_name          random
+    alias                   All Random Hosts
+}
+define hostgroup {
+    hostgroup_name          pending
+    alias                   All Pending Hosts
 }
 EOT
     return($cfg);
@@ -335,7 +402,7 @@ define service {
         service_description             test_".$type."_$service_nr
         check_command                   check_service!$type
         use                             generic-service
-        servicegroups                   $servicegroup
+        servicegroups                   $servicegroup,$type
 $active_checks_enabled}";
         }
     }
@@ -366,6 +433,34 @@ define servicegroup {
 define servicegroup {
     servicegroup_name       servicegroup_05
     alias                   servicegroup_alias_05
+}
+define servicegroup {
+    servicegroup_name       ok
+    alias                   All Ok Services
+}
+define servicegroup {
+    servicegroup_name       warning
+    alias                   All Warning Services
+}
+define servicegroup {
+    servicegroup_name       unknown
+    alias                   All Unknown Services
+}
+define servicegroup {
+    servicegroup_name       critical
+    alias                   All Critical Services
+}
+define servicegroup {
+    servicegroup_name       pending
+    alias                   All Pending Services
+}
+define servicegroup {
+    servicegroup_name       random
+    alias                   All Random Services
+}
+define servicegroup {
+    servicegroup_name       flap
+    alias                   All Flapping Services
 }
 EOT
     return($cfg);
@@ -402,6 +497,10 @@ sub _get_commands_cfg {
 define command{
     command_name    check-host-alive
     command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$
+}
+define command{
+    command_name    check-host-alive-parent
+    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG1\$
 }
 define command{
     command_name    notify-host

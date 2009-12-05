@@ -91,8 +91,9 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'output_dir'                => $opt_d,
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
-                    'hostcount'                 => 400,
-                    'services_per_host'         => 25,
+                    'routercount'               => 5,
+                    'hostcount'                 => 50,
+                    'services_per_host'         => 10,
                     'nagios_cfg'                => {
                             'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                             'nagios_user'   => $nagios_user,
@@ -107,6 +108,13 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'service_settings'          => {
                             'normal_check_interval' => 30,
                             'retry_check_interval'  => 5,
+                        },
+                    'router_types'              => {
+                                    'down'         => 20, # percentage
+                                    'up'           => 20,
+                                    'flap'         => 20,
+                                    'pending'      => 20,
+                                    'random'       => 20,
                         },
                     'host_types'                => {
                                     'down'         => 5, # percentage

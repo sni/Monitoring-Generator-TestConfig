@@ -19,7 +19,8 @@ use warnings;
 
 sub get_test_hostcheck {
     my $self = shift;
-    my $testhostcheck;
+    our $testhostcheck;
+    return($testhostcheck) if defined $testhostcheck;
     while(my $line = <DATA>) { $testhostcheck .= $line; }
     return($testhostcheck);
 }
@@ -43,6 +44,7 @@ test_hostcheck.pl - host check replacement for testing purposes
                     [ --failchance=<percentage>     ]
                     [ --previous-state=<state>      ]
                     [ --state-duration=<meconds>    ]
+                    [ --parent-state=<state>        ]
 
 =head1 DESCRIPTION
 
@@ -108,7 +110,7 @@ do_check();
 sub do_check {
     ######################################################################
     # parse and check cmd line arguments
-    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type );
+    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type, $opt_parent_state );
     Getopt::Long::Configure('no_ignore_case');
     if(!GetOptions (
        "h"                        => \$opt_h,
@@ -118,6 +120,7 @@ sub do_check {
        "failchance=s"             => \$opt_failchance,
        "previous-state=s"         => \$opt_previous_state,
        "state-duration=i"         => \$opt_state_duration,
+       "parent-state=s"           => \$opt_parent_state,
     )) {
         pod2usage( { -verbose => 1, -message => 'error in options' } );
         exit 3;
@@ -140,25 +143,31 @@ sub do_check {
 
     #########################################################################
     # Set Defaults
-    $opt_minimum_outage = 0    if !defined $opt_minimum_outage;
-    $opt_failchance     = 5    if !defined $opt_failchance;
-    $opt_previous_state = 'UP' if !defined $opt_previous_state;
+    $opt_minimum_outage = 0        unless defined $opt_minimum_outage;
+    $opt_failchance     = 5        unless defined $opt_failchance;
+    $opt_previous_state = 'UP'     unless defined $opt_previous_state;
+    $opt_parent_state   = 'UP'     unless defined $opt_parent_state;
+    $opt_type           = 'random' unless defined $opt_type;
 
     #########################################################################
     my $states = {
-        'UP'    => 0,
-        'DOWN'  => 1,
-        'DOWN'  => 2,
-        'DOWN'  => 3,
-        'DOWN'  => 4,
+        'PENDING'     => 0,
+        'UP'          => 0,
+        'DOWN'        => 2,
+        'UNREACHABLE' => 2,
     };
 
     #########################################################################
     my $hostname = hostname;
 
+    if($opt_parent_state ne 'UP') {
+        print "$hostname DOWN: $opt_type hostcheck: parent host down\n";
+        exit $states->{'UNREACHABLE'};
+    }
+
     #########################################################################
     # not a random check?
-    if(defined $opt_type and lc $opt_type ne 'random') {
+    if($opt_type ne 'random') {
         if(lc $opt_type eq 'up') {
             print "$hostname OK: ok hostcheck\n";
             exit 0;

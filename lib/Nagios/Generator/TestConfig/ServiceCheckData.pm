@@ -20,7 +20,8 @@ use warnings;
 
 sub get_test_servicecheck {
     my $self = shift;
-    my $testservicecheck;
+    our $testservicecheck;
+    return($testservicecheck) if defined $testservicecheck;
     while(my $line = <DATA>) { $testservicecheck .= $line; }
     return($testservicecheck);
 }
