@@ -30,6 +30,12 @@ print help and exit
 
 verbose output
 
+=item prefix
+
+    -p
+
+add this prefix to all exported hosts and services
+
 =item directory
 
     output directory for export
@@ -38,7 +44,7 @@ verbose output
 
 =head1 EXAMPLE
 
-./create_nagios_test_config.pl /tmp/test-nagios-config/
+./create_nagios_test_config.pl -p test1 /tmp/test-nagios-config/
 
 =head1 AUTHOR
 
@@ -56,11 +62,12 @@ use Nagios::Generator::TestConfig;
 
 #########################################################################
 # parse and check cmd line arguments
-my ($opt_h, $opt_v, $opt_d);
+my ($opt_h, $opt_v, $opt_p, $opt_d);
 Getopt::Long::Configure('no_ignore_case');
 if(!GetOptions (
    "h"              => \$opt_h,
    "v"              => \$opt_v,
+   "p"              => \$opt_p,
    "<>"             => \&add_dir,
 )) {
     pod2usage( { -verbose => 1, -message => 'error in options' } );
@@ -81,12 +88,15 @@ if(!defined $opt_d) {
     exit 3;
 }
 
+$opt_p = "" unless defined $opt_p;
+
 
 #########################################################################
 my $ngt = Nagios::Generator::TestConfig->new(
                     'output_dir'                => $opt_d,
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
+                    'prefix'                    => $opt_p,
                     'routercount'               => 20,
                     'hostcount'                 => 200,
                     'services_per_host'         => 20,

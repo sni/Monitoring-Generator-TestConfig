@@ -2,6 +2,7 @@ Revision history for Perl extension Nagios::Generator::TestConfig.
 
 0.20  Sun Dec 13 00:55:33 CET 2009
 	added init script
+	added prefix option
 
 0.18  Sat Dec  5 15:33:10 CET 2009
 	added support for parent router

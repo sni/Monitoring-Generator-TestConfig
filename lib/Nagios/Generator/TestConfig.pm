@@ -42,6 +42,7 @@ Arguments are in key-value pairs.
     overwrite_dir               overwrite contents of an existing directory. Default: false
     user                        nagios user, defaults to the current user
     group                       nagios group, defaults to the current users group
+    prefix                      prefix to all hosts / services
     nagios_bin                  path to your nagios bin
     hostcount                   amount of hosts to export, Default 10
     routercount                 amount of router to export, Default 5 ( exported as host and used as parent )
@@ -67,6 +68,7 @@ sub new {
                     'output_dir'          => undef,
                     'user'                => undef,
                     'group'               => undef,
+                    'prefix'              => '',
                     'overwrite_dir'       => 0,
                     'nagios_bin'          => undef,
                     'routercount'         => 5,
@@ -252,7 +254,7 @@ sub _get_hosts_cfg {
         my $nr        = sprintf("%0".$nr_length."d", $x);
         my $type      = shift @routertypes;
         my $active_checks_enabled = "";
-        push @router, "test_router_$nr";
+        push @router, $self->{'prefix'}."test_router_$nr";
         $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
 
         # first router gets additional infos
@@ -270,8 +272,8 @@ sub _get_hosts_cfg {
 
         $cfg .= "
 define host {
-    host_name       test_router_$nr
-    alias           ".$type."_".$nr."
+    host_name       ".$self->{'prefix'}."test_router_$nr
+    alias           ".$self->{'prefix'}.$type."_".$nr."
     use             generic-host
     address         127.0.$x.1
     check_command   check-host-alive!$type
@@ -304,8 +306,8 @@ $active_checks_enabled$extra}";
         }
         $cfg .= "
 define host {
-    host_name              test_host_$nr
-    alias                  ".$type."_".$nr."
+    host_name              ".$self->{'prefix'}."test_host_$nr
+    alias                  ".$self->{'prefix'}.$type."_".$nr."
     use                    generic-host
     address                127.0.$cur_router.".($x + 1)."
     hostgroups             $hostgroup,$type
@@ -412,8 +414,8 @@ sub _get_services_cfg {
 
             $cfg .= "
 define service {
-        host_name                       test_host_$host_nr
-        service_description             test_".$type."_$service_nr
+        host_name                       ".$self->{'prefix'}."test_host_$host_nr
+        service_description             ".$self->{'prefix'}."test_".$type."_$service_nr
         check_command                   check_service!$type
         use                             generic-service
         servicegroups                   $servicegroup,$type
@@ -756,11 +758,13 @@ Create a sample config with manually overriden host/service settings:
                         'output_dir'                => '/tmp/nagios-test-conf',
                         'verbose'                   => 1,
                         'overwrite_dir'             => 1,
+                        'user'                      => 'nagios',
+                        'group'                     => 'nagios',
                         'hostcount'                 => 50,
                         'services_per_host'         => 20,
                         'nagios_cfg'                => {
-                                'nagios_user'   => 'nagios',
-                                'nagios_group'  => 'nagios',
+                                'debug_level'     => 1,
+                                'debug_verbosity' => 1,
                             },
                         'hostfailrate'              => 2, # percentage (only for the random ones)
                         'servicefailrate'           => 5, # percentage (only for the random ones)

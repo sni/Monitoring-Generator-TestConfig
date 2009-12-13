@@ -17,6 +17,7 @@ if(!defined $ngt->{'nagios_bin'}) {
 
 $configtests = {
     "simple standard" => { 'output_dir' => $test_dir, 'overwrite_dir' => 1 },
+    "simple prefix"   => { 'output_dir' => $test_dir, 'overwrite_dir' => 1, 'prefix' => 'pre_' },
     "small standard"  => { 'output_dir' => $test_dir, 'overwrite_dir' => 1, 'routercount' =>  1, 'hostcount' =>   1, 'services_per_host' =>  1 },
     "medium standard" => { 'output_dir' => $test_dir, 'overwrite_dir' => 1, 'routercount' => 30, 'hostcount' => 400, 'services_per_host' => 25 },
     "complex config"  => { 'output_dir' => $test_dir, 'overwrite_dir' => 1,
