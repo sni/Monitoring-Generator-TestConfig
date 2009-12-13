@@ -83,21 +83,15 @@ if(!defined $opt_d) {
 
 
 #########################################################################
-my $nagios_user  = getlogin();
-my @userinfo     = getpwnam($nagios_user);
-my @groupinfo    = getgrgid($userinfo[3]);
-my $nagios_group = $groupinfo[0];
 my $ngt = Nagios::Generator::TestConfig->new(
                     'output_dir'                => $opt_d,
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
-                    'routercount'               => 5,
-                    'hostcount'                 => 50,
-                    'services_per_host'         => 10,
+                    'routercount'               => 20,
+                    'hostcount'                 => 200,
+                    'services_per_host'         => 20,
                     'nagios_cfg'                => {
                             'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
-                            'nagios_user'   => $nagios_user,
-                            'nagios_group'  => $nagios_group,
                         },
                     'hostfailrate'              => 2, # percentage
                     'servicefailrate'           => 5, # percentage
@@ -110,11 +104,11 @@ my $ngt = Nagios::Generator::TestConfig->new(
                             'retry_check_interval'  => 5,
                         },
                     'router_types'              => {
-                                    'down'         => 20, # percentage
-                                    'up'           => 20,
-                                    'flap'         => 20,
-                                    'pending'      => 20,
-                                    'random'       => 20,
+                                    'down'         => 10, # percentage
+                                    'up'           => 10,
+                                    'flap'         => 10,
+                                    'pending'      => 10,
+                                    'random'       => 60,
                         },
                     'host_types'                => {
                                     'down'         => 5, # percentage

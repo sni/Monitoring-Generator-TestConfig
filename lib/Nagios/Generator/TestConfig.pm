@@ -5,10 +5,12 @@ use strict;
 use warnings;
 use Carp;
 use POSIX qw(ceil);
+use File::Which;
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
+use Nagios::Generator::TestConfig::InitScriptData;
 
-our $VERSION = '0.18';
+our $VERSION = '0.20';
 
 =head1 NAME
 
@@ -37,6 +39,9 @@ Arguments are in key-value pairs.
     verbose                     verbose mode
     output_dir                  export directory
     overwrite_dir               overwrite contents of an existing directory. Default: false
+    user                        nagios user, defaults to the current user
+    group                       nagios group, defaults to the current users group
+    nagios_bin                  path to your nagios bin
     hostcount                   amount of hosts to export, Default 10
     routercount                 amount of router to export, Default 5 ( exported as host and used as parent )
     services_per_host           amount of services per host, Default 10
@@ -59,7 +64,10 @@ sub new {
     my $self = {
                     'verbose'             => 0,
                     'output_dir'          => undef,
+                    'user'                => undef,
+                    'group'               => undef,
                     'overwrite_dir'       => 0,
+                    'nagios_bin'          => undef,
                     'routercount'         => 5,
                     'hostcount'           => 10,
                     'services_per_host'   => 10,
@@ -107,8 +115,25 @@ sub new {
         croak('no output_dir given');
     }
 
+    # strip off last slash
+    $self->{'output_dir'} =~ s/\/$//mx;
+
     if(-e $self->{'output_dir'} and !$self->{'overwrite_dir'}) {
         croak('output_dir '.$self->{'output_dir'}.' does already exist and overwrite_dir not set');
+    }
+
+    # set some defaults
+    my $user        = getlogin();
+    my @userinfo    = getpwnam($user);
+    my @groupinfo   = getgrgid($userinfo[3]);
+    my $group       = $groupinfo[0];
+
+    $self->{'user'}  = $user  unless defined $self->{'user'};
+    $self->{'group'} = $group unless defined $self->{'group'};
+
+    # try to find a nagios binary in path
+    if(!defined $self->{'nagios_bin'}) {
+        $self->{'nagios_bin'} = which('nagios3') || which('nagios') || '/usr/sbin/nagios';
     }
 
     return $self;
@@ -145,7 +170,7 @@ sub create {
     close $fh;
 
     # create some missing dirs
-    for my $dir (qw{tmp etc var checkresults plugins archives}) {
+    for my $dir (qw{etc var var/checkresults var/tmp plugins archives init.d}) {
         if(!-d $self->{'output_dir'}.'/'.$dir) {
             mkdir($self->{'output_dir'}.'/'.$dir)
                 or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
@@ -194,17 +219,24 @@ sub create {
 
     # write out test servicecheck plugin
     open($fh, '>', $self->{'output_dir'}.'/plugins/test_servicecheck.pl') or die('cannot write: '.$!);
-    print $fh $self->_get_test_servicecheck();
+    print $fh Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck();
     close $fh;
     chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.pl';
 
     # write out test hostcheck plugin
     open($fh, '>', $self->{'output_dir'}.'/plugins/test_hostcheck.pl') or die('cannot write: '.$!);
-    print $fh $self->_get_test_hostcheck();
+    print $fh Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck();
     close $fh;
     chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
 
+    # write out init script
+    open($fh, '>', $self->{'output_dir'}.'/init.d/nagios') or die('cannot write: '.$!);
+    print $fh Nagios::Generator::TestConfig::InitScriptData->get_init_script($self->{'output_dir'}, $self->{'nagios_bin'}, $self->{'user'}, $self->{'group'});
+    close $fh;
+    chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
+
     print "exported test config to: $self->{'output_dir'}\n";
+    print "check your configuration with: $self->{'output_dir'}/init.d/nagios checkconfig\n";
 
     return 1;
 }
@@ -313,52 +345,30 @@ $active_checks_enabled$parents}";
 ########################################
 sub _get_hostgroups_cfg {
     my $self = shift;
-    my $cfg = <<EOT;
+
+    my $hostgroups = [
+        { name => 'router',          alias => 'All Router Hosts'   },
+        { name => 'hostgroup_01',    alias => 'hostgroup_alias_01' },
+        { name => 'hostgroup_02',    alias => 'hostgroup_alias_02' },
+        { name => 'hostgroup_03',    alias => 'hostgroup_alias_03' },
+        { name => 'hostgroup_04',    alias => 'hostgroup_alias_04' },
+        { name => 'hostgroup_05',    alias => 'hostgroup_alias_05' },
+        { name => 'up',              alias => 'All Up Hosts'       },
+        { name => 'down',            alias => 'All Down Hosts'     },
+        { name => 'pending',         alias => 'All Pending Hosts'  },
+        { name => 'random',          alias => 'All Random Hosts'   },
+        { name => 'flap',            alias => 'All Flapping Hosts' },
+    ];
+    my $cfg = "";
+    for my $hostgroup (@{$hostgroups}) {
+        $cfg .= "
 define hostgroup {
-    hostgroup_name          router
-    alias                   All Router Hosts
+    hostgroup_name          $hostgroup->{'name'}
+    alias                   $hostgroup->{'alias'}
 }
-define hostgroup {
-    hostgroup_name          hostgroup_01
-    alias                   hostgroup_alias_01
-}
-define hostgroup {
-    hostgroup_name          hostgroup_02
-    alias                   hostgroup_alias_02
-}
-define hostgroup {
-    hostgroup_name          hostgroup_03
-    alias                   hostgroup_alias_03
-}
-define hostgroup {
-    hostgroup_name          hostgroup_04
-    alias                   hostgroup_alias_04
-}
-define hostgroup {
-    hostgroup_name          hostgroup_05
-    alias                   hostgroup_alias_05
-}
-define hostgroup {
-    hostgroup_name          up
-    alias                   All Up Hosts
-}
-define hostgroup {
-    hostgroup_name          down
-    alias                   All Down Hosts
-}
-define hostgroup {
-    hostgroup_name          flap
-    alias                   All Flapping Hosts
-}
-define hostgroup {
-    hostgroup_name          random
-    alias                   All Random Hosts
-}
-define hostgroup {
-    hostgroup_name          pending
-    alias                   All Pending Hosts
-}
-EOT
+";
+    }
+
     return($cfg);
 }
 
@@ -443,56 +453,30 @@ $active_checks_enabled$extra}";
 ########################################
 sub _get_servicegroups_cfg {
     my $self = shift;
-    my $cfg = <<EOT;
+
+    my $servicegroups = [
+        { name => 'servicegroup_01', alias => 'servicegroup_alias_01' },
+        { name => 'servicegroup_02', alias => 'servicegroup_alias_02' },
+        { name => 'servicegroup_03', alias => 'servicegroup_alias_03' },
+        { name => 'servicegroup_04', alias => 'servicegroup_alias_04' },
+        { name => 'servicegroup_05', alias => 'servicegroup_alias_05' },
+        { name => 'ok',              alias => 'All Ok Services'       },
+        { name => 'warning',         alias => 'All Warning Services'  },
+        { name => 'unknown',         alias => 'All Unknown Services'  },
+        { name => 'critical',        alias => 'All Critical Services' },
+        { name => 'pending',         alias => 'All Pending Services'  },
+        { name => 'random',          alias => 'All Random Services'   },
+        { name => 'flap',            alias => 'All Flapping Services' },
+    ];
+    my $cfg = "";
+    for my $servicegroup (@{$servicegroups}) {
+        $cfg .= "
 define servicegroup {
-    servicegroup_name       servicegroup_01
-    alias                   servicegroup_alias_01
+    servicegroup_name       $servicegroup->{'name'}
+    alias                   $servicegroup->{'alias'}
 }
-define servicegroup {
-    servicegroup_name       servicegroup_02
-    alias                   servicegroup_alias_02
-}
-define servicegroup {
-    servicegroup_name       servicegroup_03
-    alias                   servicegroup_alias_03
-}
-define servicegroup {
-    servicegroup_name       servicegroup_04
-    alias                   servicegroup_alias_04
-}
-define servicegroup {
-    servicegroup_name       servicegroup_05
-    alias                   servicegroup_alias_05
-}
-define servicegroup {
-    servicegroup_name       ok
-    alias                   All Ok Services
-}
-define servicegroup {
-    servicegroup_name       warning
-    alias                   All Warning Services
-}
-define servicegroup {
-    servicegroup_name       unknown
-    alias                   All Unknown Services
-}
-define servicegroup {
-    servicegroup_name       critical
-    alias                   All Critical Services
-}
-define servicegroup {
-    servicegroup_name       pending
-    alias                   All Pending Services
-}
-define servicegroup {
-    servicegroup_name       random
-    alias                   All Random Services
-}
-define servicegroup {
-    servicegroup_name       flap
-    alias                   All Flapping Services
-}
-EOT
+";
+    }
     return($cfg);
 }
 
@@ -587,15 +571,15 @@ sub _get_nagios_cfg {
         'resource_file'                                 => $self->{'output_dir'}.'/etc/resource.cfg',
         'status_file'                                   => $self->{'output_dir'}.'/var/status.dat',
         'status_update_interval'                        => 30,
-        'nagios_user'                                   => 'nagios',
-        'nagios_group'                                  => 'nagios',
+        'nagios_user'                                   => $self->{'user'},
+        'nagios_group'                                  => $self->{'group'},
         'check_external_commands'                       => 1,
         'command_check_interval'                        => -1,
         'command_file'                                  => $self->{'output_dir'}.'/var/nagios.cmd',
         'external_command_buffer_slots'                 => 4096,
-        'lock_file'                                     => $self->{'output_dir'}.'/nagios3.pid',
-        'temp_file'                                     => $self->{'output_dir'}.'/tmp/nagios.tmp',
-        'temp_path'                                     => $self->{'output_dir'}.'/tmp',
+        'lock_file'                                     => $self->{'output_dir'}.'/var/nagios3.pid',
+        'temp_file'                                     => $self->{'output_dir'}.'var//tmp/nagios.tmp',
+        'temp_path'                                     => $self->{'output_dir'}.'/var/tmp',
         'event_broker_options'                          =>-1,
         'log_rotation_method'                           =>'d',
         'log_archive_path'                              => $self->{'output_dir'}.'/archives',
@@ -615,7 +599,7 @@ sub _get_nagios_cfg {
         'max_concurrent_checks'                         => 0,
         'check_result_reaper_frequency'                 => 10,
         'max_check_result_reaper_time'                  => 30,
-        'check_result_path'                             => $self->{'output_dir'}.'/checkresults',
+        'check_result_path'                             => $self->{'output_dir'}.'/var/checkresults',
         'max_check_result_file_age'                     => 3600,
         'cached_host_check_horizon'                     => 15,
         'cached_service_check_horizon'                  => 15,
@@ -676,8 +660,8 @@ sub _get_nagios_cfg {
         'illegal_macro_output_chars'                    => '`~\\$&|\'"<>',
         'use_regexp_matching'                           => 0,
         'use_true_regexp_matching'                      => 0,
-        'admin_email'                                   => 'root@localhost',
-        'admin_pager'                                   => 'pageroot@localhost',
+        'admin_email'                                   => $self->{'user'}.'@localhost',
+        'admin_pager'                                   => $self->{'user'}.'@localhost',
         'daemon_dumps_core'                             => 0,
         'use_large_installation_tweaks'                 => 0,
         'enable_environment_macros'                     => 1,
@@ -754,22 +738,6 @@ sub _create_object_conf {
 
 
 ########################################
-sub _get_test_hostcheck {
-    my $self = shift;
-    my $testhostcheck = Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck();
-    return($testhostcheck);
-
-}
-
-
-########################################
-sub _get_test_servicecheck {
-    my $self = shift;
-    my $testservicecheck = Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck();
-    return($testservicecheck);
-}
-
-########################################
 sub _fisher_yates_shuffle {
     my $self  = shift;
     my $array = shift;
@@ -781,6 +749,7 @@ sub _fisher_yates_shuffle {
     }
     return($array);
 }
+
 
 ########################################
 sub _get_types {
