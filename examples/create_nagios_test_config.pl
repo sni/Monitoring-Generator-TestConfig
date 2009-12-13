@@ -36,6 +36,12 @@ verbose output
 
 add this prefix to all exported hosts and services
 
+=item binary
+
+    nagios binary to use
+
+will search for nagios and nagios3 in path if not set
+
 =item directory
 
     output directory for export
@@ -62,12 +68,13 @@ use Nagios::Generator::TestConfig;
 
 #########################################################################
 # parse and check cmd line arguments
-my ($opt_h, $opt_v, $opt_p, $opt_d);
+my ($opt_h, $opt_v, $opt_p, $opt_b, $opt_d);
 Getopt::Long::Configure('no_ignore_case');
 if(!GetOptions (
    "h"              => \$opt_h,
    "v"              => \$opt_v,
-   "p"              => \$opt_p,
+   "p=s"            => \$opt_p,
+   "b=s"            => \$opt_b,
    "<>"             => \&add_dir,
 )) {
     pod2usage( { -verbose => 1, -message => 'error in options' } );
@@ -97,6 +104,7 @@ my $ngt = Nagios::Generator::TestConfig->new(
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
                     'prefix'                    => $opt_p,
+                    'nagios_bin'                => $opt_b,
                     'routercount'               => 20,
                     'hostcount'                 => 200,
                     'services_per_host'         => 20,
