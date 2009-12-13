@@ -178,69 +178,36 @@ sub create {
         }
     }
 
-    # write out resource.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/resource.cfg') or die('cannot write: '.$!);
-    print $fh '$USER1$='.$self->{'output_dir'}."/plugins";
-    close $fh;
+    # export config files and plugins
+    my $exportedFiles = [
+        { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins" },
+        { file => '/etc/hosts.cfg',                 data => $self->_get_hosts_cfg()                     },
+        { file => '/etc/hostgroups.cfg',            data => $self->_get_hostgroups_cfg()                },
+        { file => '/etc/services.cfg',              data => $self->_get_services_cfg()                  },
+        { file => '/etc/servicegroups.cfg',         data => $self->_get_servicegroups_cfg()             },
+        { file => '/etc/contacts.cfg',              data => $self->_get_contacts_cfg()                  },
+        { file => '/etc/commands.cfg',              data => $self->_get_commands_cfg()                  },
+        { file => '/etc/timeperiods.cfg',           data => $self->_get_timeperiods_cfg()               },
+        { file => '/plugins/test_servicecheck.pl',  data => Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
+        { file => '/plugins/test_hostcheck.pl',     data => Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
+        { file => '/plugins/p1.pl',                 data => Nagios::Generator::TestConfig::P1Data->get_p1_script()                   },
+        { file => '/init.d/nagios',                 data => Nagios::Generator::TestConfig::InitScriptData->get_init_script(
+                                                                        $self->{'output_dir'},
+                                                                        $self->{'nagios_bin'},
+                                                                        $self->{'user'},
+                                                                        $self->{'group'}
+                                                            )},
+    ];
+    for my $exportFile (@{$exportedFiles}) {
+        open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
+        print $fh $exportFile->{'data'};
+        close $fh;
+    }
 
-    # write out hosts.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/hosts.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_hosts_cfg();
-    close $fh;
-
-    # write out hostgroups.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/hostgroups.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_hostgroups_cfg();
-    close $fh;
-
-    # write out services.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/services.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_services_cfg();
-    close $fh;
-
-    # write out servicegroups.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/servicegroups.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_servicegroups_cfg();
-    close $fh;
-
-    # write out contacts.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/contacts.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_contacts_cfg();
-    close $fh;
-
-    # write out commands.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/commands.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_commands_cfg();
-    close $fh;
-
-    # write out timperiods.cfg
-    open($fh, '>', $self->{'output_dir'}.'/etc/timeperiods.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_timeperiods_cfg();
-    close $fh;
-
-    # write out test servicecheck plugin
-    open($fh, '>', $self->{'output_dir'}.'/plugins/test_servicecheck.pl') or die('cannot write: '.$!);
-    print $fh Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck();
-    close $fh;
     chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.pl';
-
-    # write out test hostcheck plugin
-    open($fh, '>', $self->{'output_dir'}.'/plugins/test_hostcheck.pl') or die('cannot write: '.$!);
-    print $fh Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck();
-    close $fh;
     chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
-
-    # write out init script
-    open($fh, '>', $self->{'output_dir'}.'/init.d/nagios') or die('cannot write: '.$!);
-    print $fh Nagios::Generator::TestConfig::InitScriptData->get_init_script($self->{'output_dir'}, $self->{'nagios_bin'}, $self->{'user'}, $self->{'group'});
-    close $fh;
-    chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
-
-    # write out p1 file
-    open($fh, '>', $self->{'output_dir'}.'/plugins/p1.pl') or die('cannot write: '.$!);
-    print $fh Nagios::Generator::TestConfig::P1Data->get_p1_script();
-    close $fh;
     chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
+    chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
 
     print "exported test config to: $self->{'output_dir'}\n";
     print "check your configuration with: $self->{'output_dir'}/init.d/nagios checkconfig\n";
