@@ -253,33 +253,33 @@ sub _get_hosts_cfg {
         my $hostgroup = "router";
         my $nr        = sprintf("%0".$nr_length."d", $x);
         my $type      = shift @routertypes;
-        my $active_checks_enabled = "";
         push @router, $self->{'prefix'}."test_router_$nr";
-        $active_checks_enabled = "        active_checks_enabled           0\n" if $type eq 'pending';
+
+        my $host = {
+            'host_name'     => $self->{'prefix'}."test_router_".$nr,
+            'alias'         => $self->{'prefix'}.$type."_".$nr,
+            'use'           => 'generic-host',
+            'address'       => '127.0.'.$x.'.1',
+            'hostgroups'    => $hostgroup,
+            'check_command' => 'check-host-alive!'.$type,
+            'icon_image'    => '../../docs/images/switch.png',
+        };
+        $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
 
         # first router gets additional infos
-        my $extra = "";
         if($x == 0) {
-            $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
-    notes          just a notes string
-    icon_image_alt icon alt string
-    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+            $host->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+            $host->{'notes'}          = 'just a notes string';
+            $host->{'icon_image_alt'} = 'icon alt string';
+            $host->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
         }
         if($x == 1) {
-            $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
-    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+            $host->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+            $host->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
         }
 
-        $cfg .= "
-define host {
-    host_name       ".$self->{'prefix'}."test_router_$nr
-    alias           ".$self->{'prefix'}.$type."_".$nr."
-    use             generic-host
-    address         127.0.$x.1
-    check_command   check-host-alive!$type
-    hostgroups      $hostgroup
-    icon_image      ../../docs/images/switch.png
-$active_checks_enabled$extra}";
+        $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
+        $cfg .= $self->_create_object_conf('host', $host);
     }
 
     # hosts
@@ -294,25 +294,24 @@ $active_checks_enabled$extra}";
         $hostgroup    = "hostgroup_05" if $x%5 == 4;
         my $nr        = sprintf("%0".$nr_length."d", $x);
         my $type      = shift @hosttypes;
-        my $active_checks_enabled = "";
-        $active_checks_enabled = "    active_checks_enabled  0\n" if $type eq 'pending';
-        my $parents = "";
         my $num_router = scalar @router + 1;
         my $cur_router = $x % $num_router;
-        my $check   = "    check_command          check-host-alive!$type";
+        my $host = {
+            'host_name'     => $self->{'prefix'}."test_host_".$nr,
+            'alias'         => $self->{'prefix'}.$type."_".$nr,
+            'use'           => 'generic-host',
+            'address'       => '127.0.'.$cur_router.($x + 1),
+            'hostgroups'    => $hostgroup.','.$type,
+            'check_command' => 'check-host-alive!'.$type,
+        };
         if(defined $router[$cur_router]) {
-            $parents = "    parents                ".$router[$cur_router]."\n";
-            $check   = "    check_command          check-host-alive-parent!$type!\$HOSTSTATE:".$router[$cur_router]."\$";
+            $host->{'parents'}       = $router[$cur_router];
+            $host->{'check_command'} = 'check-host-alive-parent!'.$type.'!$HOSTSTATE:'.$router[$cur_router].'$';
         }
-        $cfg .= "
-define host {
-    host_name              ".$self->{'prefix'}."test_host_$nr
-    alias                  ".$self->{'prefix'}.$type."_".$nr."
-    use                    generic-host
-    address                127.0.$cur_router.".($x + 1)."
-    hostgroups             $hostgroup,$type
-$check
-$active_checks_enabled$parents}";
+        $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
+
+        $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
+        $cfg .= $self->_create_object_conf('host', $host);
     }
 
     return($cfg);
@@ -395,31 +394,32 @@ sub _get_services_cfg {
             $servicegroup    = "servicegroup_04" if $y%5 == 3;
             $servicegroup    = "servicegroup_05" if $y%5 == 4;
             my $type         = shift @servicetypes;
-            my $active_checks_enabled = "";
-            $active_checks_enabled    = "        active_checks_enabled           0\n" if $type eq 'pending';
+
+            my $service = {
+                'host_name'             => $self->{'prefix'}."test_host_".$host_nr,
+                'service_description'   => $self->{'prefix'}."test_".$type."_".$service_nr,
+                'check_command'         => 'check_service!'.$type,
+                'use'                   => 'generic-service',
+                'servicegroups'         => $servicegroup.','.$type,
+            };
+
+            $service->{'active_checks_enabled'} = '0' if $type eq 'pending';
 
             # first router gets additional infos
-            my $extra = "";
             if($y == 0) {
-                $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
-    notes          just a notes string
-    icon_image_alt icon alt string
-    icon_image      ../../docs/images/tip.gif
-    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+                $service->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+                $service->{'notes'}          = 'just a notes string';
+                $service->{'icon_image_alt'} = 'icon alt string';
+                $service->{'icon_image'}     = '../../docs/images/tip.gif';
+                $service->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
             }
             if($y == 1) {
-                $extra = "notes_url      http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README
-    action_url      http://search.cpan.org/dist/Nagios-Generator-TestConfig/\n";
+                $service->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+                $service->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
             }
 
-            $cfg .= "
-define service {
-        host_name                       ".$self->{'prefix'}."test_host_$host_nr
-        service_description             ".$self->{'prefix'}."test_".$type."_$service_nr
-        check_command                   check_service!$type
-        use                             generic-service
-        servicegroups                   $servicegroup,$type
-$active_checks_enabled$extra}";
+            $service = $self->_merge_config_hashes($service, $self->{'service_settings'});
+            $cfg .= $self->_create_object_conf('service', $service);
         }
     }
 
@@ -705,9 +705,9 @@ sub _create_object_conf {
 
     for my $key (sort keys %{$conf}) {
         my $value = $conf->{$key};
-        $confstring .= sprintf("%-30s", $key)." ".$value."\n";
+        $confstring .= '  '.sprintf("%-30s", $key)." ".$value."\n";
     }
-    $confstring .= "}\n";
+    $confstring .= "}\n\n";
 
     return($confstring);
 }
