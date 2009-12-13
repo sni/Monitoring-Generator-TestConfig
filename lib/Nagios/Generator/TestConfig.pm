@@ -277,6 +277,10 @@ sub _get_hosts_cfg {
             $host->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
             $host->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
         }
+        if($x == 2) {
+            $host->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
+            $host->{'action_url'}     = 'http://google.com/?q=$HOSTNAME$';
+        }
 
         $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
         $cfg .= $self->_create_object_conf('host', $host);
@@ -416,6 +420,10 @@ sub _get_services_cfg {
             if($y == 1) {
                 $service->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
                 $service->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
+            }
+            if($y == 2) {
+                $service->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
+                $service->{'action_url'}     = 'http://google.com/?q=$HOSTNAME$';
             }
 
             $service = $self->_merge_config_hashes($service, $self->{'service_settings'});
