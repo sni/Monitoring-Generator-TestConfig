@@ -74,6 +74,13 @@ for my $name (keys %{$configtests}) {
         $ngt->{'nagios_bin'}.' -v '.$test_dir.'/nagios.cfg',
         $test_dir.'/init.d/nagios checkconfig',
     ];
+    # add some author tests
+    if($ENV{TEST_AUTHOR} ) {
+        push @{$testcommands}, $test_dir.'/init.d/nagios start';
+        push @{$testcommands}, $test_dir.'/init.d/nagios status';
+        push @{$testcommands}, $test_dir.'/init.d/nagios stop';
+    }
+
     for $cmd (@{$testcommands}) {
         open(my $ph, '-|', $cmd) or die('exec "'.$cmd.'" failed: $!');
         my $output = "";

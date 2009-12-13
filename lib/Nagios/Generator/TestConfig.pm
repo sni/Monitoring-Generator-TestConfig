@@ -9,6 +9,7 @@ use File::Which;
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 use Nagios::Generator::TestConfig::InitScriptData;
+use Nagios::Generator::TestConfig::P1Data;
 
 our $VERSION = '0.20';
 
@@ -234,6 +235,12 @@ sub create {
     print $fh Nagios::Generator::TestConfig::InitScriptData->get_init_script($self->{'output_dir'}, $self->{'nagios_bin'}, $self->{'user'}, $self->{'group'});
     close $fh;
     chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
+
+    # write out p1 file
+    open($fh, '>', $self->{'output_dir'}.'/plugins/p1.pl') or die('cannot write: '.$!);
+    print $fh Nagios::Generator::TestConfig::P1Data->get_p1_script();
+    close $fh;
+    chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
 
     print "exported test config to: $self->{'output_dir'}\n";
     print "check your configuration with: $self->{'output_dir'}/init.d/nagios checkconfig\n";
@@ -653,7 +660,7 @@ sub _get_nagios_cfg {
         'low_host_flap_threshold'                       => 5.0,
         'high_host_flap_threshold'                      => 20.0,
         'date_format'                                   => 'iso8601',
-        'p1_file'                                       => $self->{'output_dir'}.'/p1.pl',
+        'p1_file'                                       => $self->{'output_dir'}.'/plugins/p1.pl',
         'enable_embedded_perl'                          => 1,
         'use_embedded_perl_implicitly'                  => 1,
         'illegal_object_name_chars'                     => '`~!\\$%^&*|\'"<>?,()=',
