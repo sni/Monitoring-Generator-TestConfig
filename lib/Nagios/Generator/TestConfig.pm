@@ -554,7 +554,7 @@ sub _get_nagios_cfg {
         'command_file'                                  => $self->{'output_dir'}.'/var/nagios.cmd',
         'external_command_buffer_slots'                 => 4096,
         'lock_file'                                     => $self->{'output_dir'}.'/var/nagios3.pid',
-        'temp_file'                                     => $self->{'output_dir'}.'var//tmp/nagios.tmp',
+        'temp_file'                                     => $self->{'output_dir'}.'/var/tmp/nagios.tmp',
         'temp_path'                                     => $self->{'output_dir'}.'/var/tmp',
         'event_broker_options'                          =>-1,
         'log_rotation_method'                           =>'d',
