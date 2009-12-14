@@ -136,7 +136,7 @@ sub new {
 
     # try to find a nagios binary in path
     if(!defined $self->{'nagios_bin'}) {
-        $self->{'nagios_bin'} = which('nagios3') || which('nagios') || '/usr/sbin/nagios';
+        $self->{'nagios_bin'} = which('nagios3') || which('nagios') || '/usr/sbin/nagios3';
     }
 
     return $self;
