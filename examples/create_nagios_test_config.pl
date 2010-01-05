@@ -6,7 +6,7 @@ create_nagios_test_config.pl - create a test nagios config
 
 =head1 SYNOPSIS
 
-./create_nagios_test_config.pl [ -h ] [ -v ] <directory>
+./create_nagios_test_config.pl [ -h ] [ -v ] [ -b <nagios binary> ] [ -p <prefix> ] <directory>
 
 =head1 DESCRIPTION
 

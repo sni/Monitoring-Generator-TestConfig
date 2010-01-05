@@ -11,7 +11,7 @@ use Nagios::Generator::TestConfig::HostCheckData;
 use Nagios::Generator::TestConfig::InitScriptData;
 use Nagios::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.20';
+our $VERSION = '0.22';
 
 =head1 NAME
 
@@ -232,8 +232,9 @@ sub _get_hosts_cfg {
         'retain_status_information'      => 1,
         'retain_nonstatus_information'   => 1,
         'max_check_attempts'             => 5,
-        'normal_check_interval'          => 1,
-        'retry_check_interval'           => 1,
+        'check_interval'                 => 1,
+        'retry_interval'                 => 1,
+        'check_period'                   => '24x7',
         'notification_interval'          => 0,
         'notification_period'            => '24x7',
         'notification_options'           => 'd,u,r',
@@ -372,8 +373,8 @@ sub _get_services_cfg {
         'notification_interval'           => 0,
         'is_volatile'                     => 0,
         'check_period'                    => '24x7',
-        'normal_check_interval'           => 1,
-        'retry_check_interval'            => 1,
+        'check_interval'                  => 1,
+        'retry_interval'                  => 1,
         'max_check_attempts'              => 3,
         'notification_period'             => '24x7',
         'notification_options'            => 'w,u,c,r',
