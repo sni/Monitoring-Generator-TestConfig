@@ -1,4 +1,4 @@
-package Nagios::Generator::TestConfig;
+package Monitoring::Generator::TestConfig;
 
 use 5.000000;
 use strict;
@@ -7,27 +7,27 @@ use Carp;
 use POSIX qw(ceil);
 use File::Which;
 use Data::Dumper;
-use Nagios::Generator::TestConfig::ServiceCheckData;
-use Nagios::Generator::TestConfig::HostCheckData;
-use Nagios::Generator::TestConfig::InitScriptData;
-use Nagios::Generator::TestConfig::P1Data;
+use Monitoring::Generator::TestConfig::ServiceCheckData;
+use Monitoring::Generator::TestConfig::HostCheckData;
+use Monitoring::Generator::TestConfig::InitScriptData;
+use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.22';
+our $VERSION = '0.24';
 
 =head1 NAME
 
-Nagios::Generator::TestConfig - Perl extension for generating test nagios configurations
+Monitoring::Generator::TestConfig - Perl extension for generating test monitoring configurations (nagios/icinga)
 
 =head1 SYNOPSIS
 
-  use Nagios::Generator::TestConfig;
-  my $ngt = Nagios::Generator::TestConfig->new( 'output_dir' => '/tmp/test_nagios' );
+  use Monitoring::Generator::TestConfig;
+  my $ngt = Monitoring::Generator::TestConfig->new( 'output_dir' => '/tmp/test_monitoring' );
   $ngt->create();
 
 =head1 DESCRIPTION
 
-This modul generates test configurations for nagios. This can be useful if you
-want for doing load tests or testing nagios addons and plugins.
+This modul generates test configurations for your monitoring. This can be useful if you
+want for doing load tests or testing addons and plugins.
 
 =head1 CONSTRUCTOR
 
@@ -35,22 +35,23 @@ want for doing load tests or testing nagios addons and plugins.
 
 =item new ( [ARGS] )
 
-Creates an C<Nagios::Generator-TestConfig> object. C<new> takes at least the output_dir.
+Creates an C<Monitoring::Generator::TestConfig> object. C<new> takes at least the output_dir.
 Arguments are in key-value pairs.
 
     verbose                     verbose mode
     output_dir                  export directory
     overwrite_dir               overwrite contents of an existing directory. Default: false
-    user                        nagios user, defaults to the current user
-    group                       nagios group, defaults to the current users group
+    layout                      which config should be generated, valid options are "nagios" and "icinga"
+    user                        user, defaults to the current user
+    group                       group, defaults to the current users group
     prefix                      prefix to all hosts / services
-    nagios_bin                  path to your nagios bin
+    binary                      path to your nagios/icinga bin
     hostcount                   amount of hosts to export, Default 10
     routercount                 amount of router to export, Default 5 ( exported as host and used as parent )
     services_per_host           amount of services per host, Default 10
     host_settings               key/value settings for use in the define host
     service_settings            key/value settings for use in the define service
-    nagios_cfg                  overwrite/add settings from the nagios.cfg
+    main_cfg                    overwrite/add settings from the nagios.cfg/icinga.cfg
     hostfailrate                chance of a host to fail, Default 2%
     servicefailrate             chance of a service to fail, Default 5%
     host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random
@@ -67,15 +68,16 @@ sub new {
     my $self = {
                     'verbose'             => 0,
                     'output_dir'          => undef,
+                    'layout'              => 'nagios',
                     'user'                => undef,
                     'group'               => undef,
                     'prefix'              => '',
                     'overwrite_dir'       => 0,
-                    'nagios_bin'          => undef,
+                    'binary'              => undef,
                     'routercount'         => 5,
                     'hostcount'           => 10,
                     'services_per_host'   => 10,
-                    'nagios_cfg'          => {},
+                    'main_cfg'            => {},
                     'host_settings'       => {},
                     'service_settings'    => {},
                     'servicefailrate'     => 5,
@@ -131,6 +133,10 @@ sub new {
         croak('no output_dir given');
     }
 
+    if(!defined $self->{'layout'} or ( $self->{'layout'} ne 'nagios' and $self->{'layout'} ne 'icinga')) {
+        croak('valid layouts are: nagios, icinga');
+    }
+
     # strip off last slash
     $self->{'output_dir'} =~ s/\/$//mx;
 
@@ -147,9 +153,13 @@ sub new {
     $self->{'user'}  = $user  unless defined $self->{'user'};
     $self->{'group'} = $group unless defined $self->{'group'};
 
-    # try to find a nagios binary in path
-    if(!defined $self->{'nagios_bin'}) {
-        $self->{'nagios_bin'} = which('nagios3') || which('nagios') || '/usr/sbin/nagios3';
+    # try to find a binary in path
+    if(!defined $self->{'binary'}) {
+        if($self->{'layout'} eq 'nagios') {
+            $self->{'binary'} = which('nagios3') || which('nagios') || which('icinga') || '/usr/sbin/nagios3';
+        } elsif($self->{'layout'} eq 'icinga' ) {
+            $self->{'binary'} = which('icinga') || '/usr/sbin/icinga';
+        }
     }
 
     return $self;
@@ -180,9 +190,11 @@ sub create {
         mkdir($self->{'output_dir'}) or croak('failed to create output_dir '.$self->{'output_dir'}.':'.$!);
     }
 
-    # write out nagios.cfg
-    open(my $fh, '>', $self->{'output_dir'}.'/nagios.cfg') or die('cannot write: '.$!);
-    print $fh $self->_get_nagios_cfg();
+    # write out main config file
+    my $mainconfigfilename = 'nagios.cfg';
+    $mainconfigfilename = 'icinga.cfg' if $self->{'layout'} eq 'icinga';
+    open(my $fh, '>', $self->{'output_dir'}.'/'.$mainconfigfilename) or die('cannot write: '.$!);
+    print $fh $self->_get_main_cfg();
     close $fh;
 
     # create some missing dirs
@@ -194,6 +206,7 @@ sub create {
     }
 
     # export config files and plugins
+    my $init = $self->{'layout'};
     my $exportedFiles = [
         { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" },
         { file => '/etc/hosts.cfg',                 data => $self->_get_hosts_cfg()                       },
@@ -204,14 +217,15 @@ sub create {
         { file => '/etc/commands.cfg',              data => $self->_get_commands_cfg()                    },
         { file => '/etc/timeperiods.cfg',           data => $self->_get_timeperiods_cfg()                 },
         { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
-        { file => '/plugins/test_servicecheck.pl',  data => Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
-        { file => '/plugins/test_hostcheck.pl',     data => Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
-        { file => '/plugins/p1.pl',                 data => Nagios::Generator::TestConfig::P1Data->get_p1_script()                   },
-        { file => '/init.d/nagios',                 data => Nagios::Generator::TestConfig::InitScriptData->get_init_script(
+        { file => '/plugins/test_servicecheck.pl',  data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
+        { file => '/plugins/test_hostcheck.pl',     data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
+        { file => '/plugins/p1.pl',                 data => Monitoring::Generator::TestConfig::P1Data->get_p1_script()                   },
+        { file => '/init.d/'.$init,                 data => Monitoring::Generator::TestConfig::InitScriptData->get_init_script(
                                                                         $self->{'output_dir'},
-                                                                        $self->{'nagios_bin'},
+                                                                        $self->{'binary'},
                                                                         $self->{'user'},
-                                                                        $self->{'group'}
+                                                                        $self->{'group'},
+                                                                        $self->{'layout'}
                                                             )},
     ];
     for my $exportFile (@{$exportedFiles}) {
@@ -223,11 +237,11 @@ sub create {
     chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.pl';
     chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
     chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
-    chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
+    chmod 0755, $self->{'output_dir'}.'/init.d/'.$init;
     chmod 0755, $self->{'output_dir'}.'/recreate.pl';
 
-    print "exported test config to: $self->{'output_dir'}\n";
-    print "check your configuration with: $self->{'output_dir'}/init.d/nagios checkconfig\n";
+    print "exported ".$self->{'layout'}." test config to: $self->{'output_dir'}\n";
+    print "check your configuration with: $self->{'output_dir'}/init.d/".$init." checkconfig\n";
     #print "configuration can be adjusted and recreated with $self->{'output_dir'}/recreate.pl\n";
 
     return 1;
@@ -285,14 +299,14 @@ sub _get_hosts_cfg {
 
         # first router gets additional infos
         if($x == 0) {
-            $host->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+            $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
             $host->{'notes'}          = 'just a notes string';
             $host->{'icon_image_alt'} = 'icon alt string';
-            $host->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
+            $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
         }
         if($x == 1) {
-            $host->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
-            $host->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
+            $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
+            $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
         }
         if($x == 2) {
             $host->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
@@ -428,15 +442,15 @@ sub _get_services_cfg {
 
             # first router gets additional infos
             if($y == 0) {
-                $service->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
+                $service->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
                 $service->{'notes'}          = 'just a notes string';
                 $service->{'icon_image_alt'} = 'icon alt string';
                 $service->{'icon_image'}     = '../../docs/images/tip.gif';
-                $service->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
+                $service->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
             }
             if($y == 1) {
-                $service->{'notes_url'}      = 'http://cpansearch.perl.org/src/NIERLEIN/Nagios-Generator-TestConfig-0.16/README';
-                $service->{'action_url'}     = 'http://search.cpan.org/dist/Nagios-Generator-TestConfig/';
+                $service->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
+                $service->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
             }
             if($y == 2) {
                 $service->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
@@ -553,11 +567,11 @@ EOT
 }
 
 ########################################
-sub _get_nagios_cfg {
+sub _get_main_cfg {
     my $self = shift;
 
-    my $nagios_cfg = {
-        'log_file'                                      => $self->{'output_dir'}.'/var/nagios.log',
+    my $main_cfg = {
+        'log_file'                                      => $self->{'output_dir'}.'/var/'.$self->{'layout'}.'.log',
         'cfg_file'                                      => [
                                                             $self->{'output_dir'}.'/etc/hosts.cfg',
                                                             $self->{'output_dir'}.'/etc/services.cfg',
@@ -572,14 +586,14 @@ sub _get_nagios_cfg {
         'resource_file'                                 => $self->{'output_dir'}.'/etc/resource.cfg',
         'status_file'                                   => $self->{'output_dir'}.'/var/status.dat',
         'status_update_interval'                        => 30,
-        'nagios_user'                                   => $self->{'user'},
-        'nagios_group'                                  => $self->{'group'},
+        $self->{'layout'}.'_user'                       => $self->{'user'},
+        $self->{'layout'}.'_group'                      => $self->{'group'},
         'check_external_commands'                       => 1,
         'command_check_interval'                        => -1,
-        'command_file'                                  => $self->{'output_dir'}.'/var/nagios.cmd',
+        'command_file'                                  => $self->{'output_dir'}.'/var/'.$self->{'layout'}.'.cmd',
         'external_command_buffer_slots'                 => 4096,
-        'lock_file'                                     => $self->{'output_dir'}.'/var/nagios3.pid',
-        'temp_file'                                     => $self->{'output_dir'}.'/var/tmp/nagios.tmp',
+        'lock_file'                                     => $self->{'output_dir'}.'/var/'.$self->{'layout'}.'.pid',
+        'temp_file'                                     => $self->{'output_dir'}.'/var/tmp/'.$self->{'layout'}.'.tmp',
         'temp_path'                                     => $self->{'output_dir'}.'/var/tmp',
         'event_broker_options'                          =>-1,
         'log_rotation_method'                           =>'d',
@@ -668,13 +682,13 @@ sub _get_nagios_cfg {
         'enable_environment_macros'                     => 1,
         'debug_level'                                   => 0,
         'debug_verbosity'                               => 1,
-        'debug_file'                                    => $self->{'output_dir'}.'/var/nagios.debug',
+        'debug_file'                                    => $self->{'output_dir'}.'/var/'.$self->{'layout'}.'.debug',
         'max_debug_file_size'                           => 1000000,
     };
 
-    $nagios_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'hostcount'} * $self->{'services_per_host'} > 2000);
+    $main_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'hostcount'} * $self->{'services_per_host'} > 2000);
 
-    my $merged     = $self->_merge_config_hashes($nagios_cfg, $self->{'nagios_cfg'});
+    my $merged     = $self->_merge_config_hashes($main_cfg, $self->{'main_cfg'});
     my $confstring = $self->_config_hash_to_string($merged);
     return($confstring);
 }
@@ -775,12 +789,12 @@ sub _get_recreate_pl {
 
     my $conf =  Dumper($self);
     $conf    =~ s/^\$VAR1\ =\ bless\(\ {//mx;
-    $conf    =~ s/},\ 'Nagios::Generator::TestConfig'\ \);$//mx;
+    $conf    =~ s/},\ 'Monitoring::Generator::TestConfig'\ \);$//mx;
 
     $pl  = <<EOT;
 #!$^X
-use Nagios::Generator::TestConfig;
-my \$ngt = Nagios::Generator::TestConfig->new(
+use Monitoring::Generator::TestConfig;
+my \$ngt = Monitoring::Generator::TestConfig->new(
 $conf
 );
 \$ngt->create();
@@ -800,16 +814,16 @@ __END__
 
 Create a sample config with manually overriden host/service settings:
 
-    use Nagios::Generator::TestConfig;
-    my $ngt = Nagios::Generator::TestConfig->new(
-                        'output_dir'                => '/tmp/nagios-test-conf',
+    use Monitoring::Generator::TestConfig;
+    my $mgt = Monitoring::Generator::TestConfig->new(
+                        'output_dir'                => '/tmp/test-conf',
                         'verbose'                   => 1,
                         'overwrite_dir'             => 1,
-                        'user'                      => 'nagios',
-                        'group'                     => 'nagios',
+                        'user'                      => 'testuser',
+                        'group'                     => 'users',
                         'hostcount'                 => 50,
                         'services_per_host'         => 20,
-                        'nagios_cfg'                => {
+                        'main_cfg'                  => {
                                 'debug_level'     => 1,
                                 'debug_verbosity' => 1,
                             },
@@ -840,7 +854,7 @@ Create a sample config with manually overriden host/service settings:
                                         'random'       => 25,
                             },
     );
-    $ngt->create();
+    $mgt->create();
 
 
 =head1 AUTHOR

@@ -1,4 +1,8 @@
-Revision history for Perl extension Nagios::Generator::TestConfig.
+Revision history for Perl extension Monitoring::Generator::TestConfig.
+
+0.24  Wed Jan  6 17:38:04 CET 2010
+	renamed to Monitoring::Generator::TestConfig
+	added switch to set layout (nagios/icinga for the moment)
 
 0.22  Tue Jan  5 21:09:50 CET 2010
 	fixed host/service config

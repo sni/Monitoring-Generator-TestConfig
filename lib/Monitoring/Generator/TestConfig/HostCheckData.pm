@@ -1,5 +1,5 @@
 package # hidden from cpan
-    Nagios::Generator::TestConfig::HostCheckData;
+    Monitoring::Generator::TestConfig::HostCheckData;
 
 use 5.000000;
 use strict;
@@ -30,8 +30,6 @@ sub get_test_hostcheck {
 __DATA__
 #!/usr/bin/env perl
 
-# nagios: +epn
-
 =head1 NAME
 
 test_hostcheck.pl - host check replacement for testing purposes
@@ -51,7 +49,7 @@ test_hostcheck.pl - host check replacement for testing purposes
 this host check calculates a random based result. It can be used as a testing replacement
 host check
 
-example nagios configuration:
+example monitoring configuration:
 
     defined command {
         command_name  check_host_alive

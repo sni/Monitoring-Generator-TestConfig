@@ -1,5 +1,5 @@
 package # hidden from cpan
-    Nagios::Generator::TestConfig::ServiceCheckData;
+    Monitoring::Generator::TestConfig::ServiceCheckData;
 
 use 5.000000;
 use strict;
@@ -31,8 +31,6 @@ sub get_test_servicecheck {
 __DATA__
 #!/usr/bin/env perl
 
-# nagios: +epn
-
 =head1 NAME
 
 test_servicecheck.pl - service check replacement for testing purposes
@@ -53,7 +51,7 @@ test_servicecheck.pl - service check replacement for testing purposes
 this service check calculates a random based result. It can be used as a testing replacement
 service check
 
-example nagios configuration:
+example configuration:
 
     defined command {
         command_name  check_service

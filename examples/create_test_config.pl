@@ -2,15 +2,15 @@
 
 =head1 NAME
 
-create_nagios_test_config.pl - create a test nagios config
+create_test_config.pl - create a test configuration
 
 =head1 SYNOPSIS
 
-./create_nagios_test_config.pl [ -h ] [ -v ] [ -b <nagios binary> ] [ -p <prefix> ] <directory>
+./create_test_config.pl [ -h ] [ -v ] [ -b <monitoring binary> ] [ -p <prefix> ] [ -l layout ] <directory>
 
 =head1 DESCRIPTION
 
-this script generates a valid test nagios configuration
+this script generates a valid test configuration
 
 =head1 ARGUMENTS
 
@@ -38,9 +38,13 @@ add this prefix to all exported hosts and services
 
 =item binary
 
-    nagios binary to use
+    nagios/icinga binary to use
 
-will search for nagios and nagios3 in path if not set
+will search for nagios, nagios3 and icinga in path if not set
+
+=item layout
+
+    use nagios or icinga
 
 =item directory
 
@@ -50,7 +54,7 @@ will search for nagios and nagios3 in path if not set
 
 =head1 EXAMPLE
 
-./create_nagios_test_config.pl -p test1 /tmp/test-nagios-config/
+./create_test_config.pl -p test1 /tmp/test-config/
 
 =head1 AUTHOR
 
@@ -64,17 +68,18 @@ use Getopt::Long;
 use Pod::Usage;
 use lib '../lib';
 use lib 'lib';
-use Nagios::Generator::TestConfig;
+use Monitoring::Generator::TestConfig;
 
 #########################################################################
 # parse and check cmd line arguments
-my ($opt_h, $opt_v, $opt_p, $opt_b, $opt_d);
+my ($opt_h, $opt_v, $opt_p, $opt_b, $opt_d, $opt_l);
 Getopt::Long::Configure('no_ignore_case');
 if(!GetOptions (
    "h"              => \$opt_h,
    "v"              => \$opt_v,
    "p=s"            => \$opt_p,
    "b=s"            => \$opt_b,
+   "l=s"            => \$opt_l,
    "<>"             => \&add_dir,
 )) {
     pod2usage( { -verbose => 1, -message => 'error in options' } );
@@ -95,20 +100,22 @@ if(!defined $opt_d) {
     exit 3;
 }
 
-$opt_p = "" unless defined $opt_p;
+$opt_p = ""       unless defined $opt_p;
+$opt_l = "nagios" unless defined $opt_l;
 
 
 #########################################################################
-my $ngt = Nagios::Generator::TestConfig->new(
+my $ngt = Monitoring::Generator::TestConfig->new(
                     'output_dir'                => $opt_d,
+                    'layout'                    => $opt_l,
                     'verbose'                   => 1,
                     'overwrite_dir'             => 1,
                     'prefix'                    => $opt_p,
-                    'nagios_bin'                => $opt_b,
+                    'binary'                    => $opt_b,
                     'routercount'               => 20,
                     'hostcount'                 => 200,
                     'services_per_host'         => 20,
-                    'nagios_cfg'                => {
+                    'main_cfg'                  => {
                             'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                         },
                     'hostfailrate'              => 2, # percentage

@@ -1,5 +1,5 @@
 package # hidden from cpan
-    Nagios::Generator::TestConfig::P1Data;
+    Monitoring::Generator::TestConfig::P1Data;
 
 use 5.000000;
 use strict;
@@ -34,7 +34,7 @@ sub get_p1_script {
 __DATA__
 package Embed::Persistent;
 
-# p1.pl for Nagios
+# p1.pl
 
 use strict ;
 
@@ -50,7 +50,7 @@ use constant	DEBUG_LEVEL		=> 0 ;
 # use constant	DEBUG_LEVEL		=> LEAVE_MSG | CACHE_DUMP ;
 # use constant	DEBUG_LEVEL		=> LEAVE_MSG | CACHE_DUMP | PLUGIN_DUMP ;
 
-use constant	DEBUG_LOG_PATH		=> '/usr/local/nagios/var/' ;
+use constant	DEBUG_LOG_PATH		=> '/tmp/p1/var/' ;
 # use constant	DEBUG_LOG_PATH		=> './' ;
 use constant	LEAVE_MSG_STREAM	=> DEBUG_LOG_PATH . 'epn_leave-msgs.log' ;
 use constant	CACHE_DUMP_STREAM	=> DEBUG_LOG_PATH . 'epn_cache-dump.log' ;

@@ -1,14 +1,16 @@
 Changes
-examples/create_nagios_test_config.pl
-lib/Nagios/Generator/TestConfig.pm
-lib/Nagios/Generator/TestConfig/HostCheckData.pm
-lib/Nagios/Generator/TestConfig/ServiceCheckData.pm
+examples/create_test_config.pl
+lib/Monitoring/Generator/TestConfig.pm
+lib/Monitoring/Generator/TestConfig/HostCheckData.pm
+lib/Monitoring/Generator/TestConfig/InitScriptData.pm
+lib/Monitoring/Generator/TestConfig/P1Data.pm
+lib/Monitoring/Generator/TestConfig/ServiceCheckData.pm
 Makefile.PL
 MANIFEST			This list of files
 README
-t/01-Nagios-Generator-TestConfig-internals.t
+t/01-Monitoring-Generator-TestConfig-internals.t
 t/10-Test-Config-Creation.t
-t/11-Nagios-Config-Test.t
+t/11-Monitoring-Config-Test.t
 t/97-Pod.t
 t/98-Pod-Coverage.t
 t/99-Perl-Critic.t
