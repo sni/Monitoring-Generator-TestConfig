@@ -2,6 +2,7 @@ Revision history for Perl extension Nagios::Generator::TestConfig.
 
 0.22  Tue Jan  5 21:09:50 CET 2010
 	fixed host/service config
+	fixed problem with newlines in resource.cfg
 
 0.20  Sun Dec 13 00:55:33 CET 2009
 	added init script

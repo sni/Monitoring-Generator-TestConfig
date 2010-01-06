@@ -6,6 +6,7 @@ use warnings;
 use Carp;
 use POSIX qw(ceil);
 use File::Which;
+use Data::Dumper;
 use Nagios::Generator::TestConfig::ServiceCheckData;
 use Nagios::Generator::TestConfig::HostCheckData;
 use Nagios::Generator::TestConfig::InitScriptData;
@@ -74,9 +75,9 @@ sub new {
                     'routercount'         => 5,
                     'hostcount'           => 10,
                     'services_per_host'   => 10,
-                    'nagios_cfg'          => undef,
-                    'host_settings'       => undef,
-                    'service_settings'    => undef,
+                    'nagios_cfg'          => {},
+                    'host_settings'       => {},
+                    'service_settings'    => {},
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
                     'router_types'        => {
@@ -107,7 +108,19 @@ sub new {
 
     for my $opt_key (keys %options) {
         if(exists $self->{$opt_key}) {
-            $self->{$opt_key} = $options{$opt_key};
+            # set option to scalar because getopt now uses objects instead of scalars
+            if(!defined $self->{$opt_key} and ref $options{$opt_key} eq '' and defined $options{$opt_key}) {
+                $self->{$opt_key} = ''.$options{$opt_key};
+            }
+            elsif(ref $self->{$opt_key} eq ref $options{$opt_key}) {
+                $self->{$opt_key} = $options{$opt_key};
+            }
+            elsif(ref $options{$opt_key} eq 'Getopt::Long::CallBack') {
+                $self->{$opt_key} = ''.$options{$opt_key};
+            }
+            else {
+                 croak('unknown type for option '.$opt_key.': '.(ref $options{$opt_key}));
+            }
         }
         else {
             croak("unknown option: $opt_key");
@@ -182,14 +195,15 @@ sub create {
 
     # export config files and plugins
     my $exportedFiles = [
-        { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins" },
-        { file => '/etc/hosts.cfg',                 data => $self->_get_hosts_cfg()                     },
-        { file => '/etc/hostgroups.cfg',            data => $self->_get_hostgroups_cfg()                },
-        { file => '/etc/services.cfg',              data => $self->_get_services_cfg()                  },
-        { file => '/etc/servicegroups.cfg',         data => $self->_get_servicegroups_cfg()             },
-        { file => '/etc/contacts.cfg',              data => $self->_get_contacts_cfg()                  },
-        { file => '/etc/commands.cfg',              data => $self->_get_commands_cfg()                  },
-        { file => '/etc/timeperiods.cfg',           data => $self->_get_timeperiods_cfg()               },
+        { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" },
+        { file => '/etc/hosts.cfg',                 data => $self->_get_hosts_cfg()                       },
+        { file => '/etc/hostgroups.cfg',            data => $self->_get_hostgroups_cfg()                  },
+        { file => '/etc/services.cfg',              data => $self->_get_services_cfg()                    },
+        { file => '/etc/servicegroups.cfg',         data => $self->_get_servicegroups_cfg()               },
+        { file => '/etc/contacts.cfg',              data => $self->_get_contacts_cfg()                    },
+        { file => '/etc/commands.cfg',              data => $self->_get_commands_cfg()                    },
+        { file => '/etc/timeperiods.cfg',           data => $self->_get_timeperiods_cfg()                 },
+        { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
         { file => '/plugins/test_servicecheck.pl',  data => Nagios::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => '/plugins/test_hostcheck.pl',     data => Nagios::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
         { file => '/plugins/p1.pl',                 data => Nagios::Generator::TestConfig::P1Data->get_p1_script()                   },
@@ -210,9 +224,11 @@ sub create {
     chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
     chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
     chmod 0755, $self->{'output_dir'}.'/init.d/nagios';
+    chmod 0755, $self->{'output_dir'}.'/recreate.pl';
 
     print "exported test config to: $self->{'output_dir'}\n";
     print "check your configuration with: $self->{'output_dir'}/init.d/nagios checkconfig\n";
+    #print "configuration can be adjusted and recreated with $self->{'output_dir'}/recreate.pl\n";
 
     return 1;
 }
@@ -751,6 +767,28 @@ sub _get_types {
     }
     return(\@types);
 }
+
+########################################
+sub _get_recreate_pl {
+    my $self  = shift;
+    my $pl;
+
+    my $conf =  Dumper($self);
+    $conf    =~ s/^\$VAR1\ =\ bless\(\ {//mx;
+    $conf    =~ s/},\ 'Nagios::Generator::TestConfig'\ \);$//mx;
+
+    $pl  = <<EOT;
+#!$^X
+use Nagios::Generator::TestConfig;
+my \$ngt = Nagios::Generator::TestConfig->new(
+$conf
+);
+\$ngt->create();
+EOT
+
+    return $pl;
+}
+
 
 1;
 
