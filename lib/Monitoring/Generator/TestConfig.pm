@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.24';
+our $VERSION = '0.26';
 
 =head1 NAME
 
@@ -155,11 +155,29 @@ sub new {
 
     # try to find a binary in path
     if(!defined $self->{'binary'}) {
+        my @possible_bin_locations;
         if($self->{'layout'} eq 'nagios') {
-            $self->{'binary'} = which('nagios3') || which('nagios') || which('icinga') || '/usr/sbin/nagios3';
+            $self->{'binary'} = which('nagios3') || which('nagios') || undef;
+            @possible_bin_locations = qw|/usr/sbin/nagios3 /usr/bin/nagios3 /usr/local/bin/nagios3 /usr/sbin/nagios /usr/bin/nagios /usr/local/bin/nagios|;
         } elsif($self->{'layout'} eq 'icinga' ) {
-            $self->{'binary'} = which('icinga') || '/usr/sbin/icinga';
+            $self->{'binary'} = which('icinga') || undef;
+            @possible_bin_locations = qw|/usr/sbin/icinga /usr/bin/icinga /usr/local/bin/icinga|;
         }
+
+        # still not defined?
+        if(!defined $self->{'binary'}) {
+            for my $loc (@possible_bin_locations) {
+                if(-x $loc) {
+                    $self->{'binary'} = $loc;
+                    last;
+                }
+            }
+        }
+    }
+
+    if(!defined $self->{'binary'}) {
+        carp('found no monitoring binary in path and none defined by the \'binary\' option, using fallback /usr/bin/nagios');
+        $self->{'binary'} = '/usr/bin/nagios';
     }
 
     return $self;

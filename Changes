@@ -1,5 +1,9 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.26  Fri Jan  8 11:13:16 CET 2010
+	fixed way of searching for binarys
+	fixed config test when there is no binary found
+
 0.24  Wed Jan  6 17:38:04 CET 2010
 	renamed to Monitoring::Generator::TestConfig
 	added switch to set layout (nagios/icinga for the moment)

@@ -2,15 +2,16 @@
 
 use Test::More;
 use File::Temp qw{ tempdir };
+use Monitoring::Generator::TestConfig;
 
-use_ok('Monitoring::Generator::TestConfig');
 my $cleanup = 1;
 my $test_dir = tempdir(CLEANUP => $cleanup);
 my $mgt = Monitoring::Generator::TestConfig->new( 'output_dir' => $test_dir, 'overwrite_dir' => 1 );
 
-if(!defined $mgt->{'binary'}) {
+if(!defined $mgt->{'binary'} or ! -x $mgt->{'binary'}) {
    plan( skip_all => 'no nagios(3)/icinga bin found in path, skipping config test' );
 }
+
 
 # which layouts to test
 my @layouts = qw/nagios icinga/;
