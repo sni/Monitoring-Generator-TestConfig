@@ -5,7 +5,10 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'Monitoring::Generator::TestConfig',
     VERSION_FROM      => 'lib/Monitoring/Generator/TestConfig.pm',
-    PREREQ_PM         => { 'File::Which' => 0 },
+    PREREQ_PM         => {
+                            'File::Which' => 0,
+                            'Test::More'  => '0.87',
+                         },
     ABSTRACT_FROM     => 'lib/Monitoring/Generator/TestConfig.pm',
     AUTHOR            => 'Sven Nierlein <nierlein@cpan.org>',
     $ExtUtils::MakeMaker::VERSION >= 6.31

@@ -547,7 +547,7 @@ define command{
 }
 define command{
     command_name    check-host-alive-parent
-    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG1\$ --hostname \$HOSTNAME\$
+    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG2\$ --hostname \$HOSTNAME\$
 }
 define command{
     command_name    notify-host
