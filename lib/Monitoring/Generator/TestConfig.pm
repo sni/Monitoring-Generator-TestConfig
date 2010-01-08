@@ -133,8 +133,8 @@ sub new {
         croak('no output_dir given');
     }
 
-    if(!defined $self->{'layout'} or ( $self->{'layout'} ne 'nagios' and $self->{'layout'} ne 'icinga')) {
-        croak('valid layouts are: nagios, icinga');
+    if(!defined $self->{'layout'} or ( $self->{'layout'} ne 'nagios' and $self->{'layout'} ne 'icinga' and $self->{'layout'} ne 'shinken')) {
+        croak('valid layouts are: nagios, icinga, shinken');
     }
 
     # strip off last slash
@@ -162,6 +162,8 @@ sub new {
         } elsif($self->{'layout'} eq 'icinga' ) {
             $self->{'binary'} = which('icinga') || undef;
             @possible_bin_locations = qw|/usr/sbin/icinga /usr/bin/icinga /usr/local/bin/icinga|;
+        } elsif($self->{'layout'} eq 'shinken' ) {
+            $self->{'binary'} = which('shinken-arbiter') || '/usr/local/shinken/bin/shinken-arbiter';
         }
 
         # still not defined?
@@ -237,15 +239,26 @@ sub create {
         { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
         { file => '/plugins/test_servicecheck.pl',  data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => '/plugins/test_hostcheck.pl',     data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
-        { file => '/plugins/p1.pl',                 data => Monitoring::Generator::TestConfig::P1Data->get_p1_script()                   },
-        { file => '/init.d/'.$init,                 data => Monitoring::Generator::TestConfig::InitScriptData->get_init_script(
-                                                                        $self->{'output_dir'},
-                                                                        $self->{'binary'},
-                                                                        $self->{'user'},
-                                                                        $self->{'group'},
-                                                                        $self->{'layout'}
-                                                            )},
     ];
+    if ($self->{'layout'} eq 'nagios' or $self->{'layout'} eq 'icinga') {
+        push(@{$exportedFiles}, { file => '/plugins/p1.pl',  data => Monitoring::Generator::TestConfig::P1Data->get_p1_script() });
+        push(@{$exportedFiles}, { file => '/init.d/'.$init,  data => Monitoring::Generator::TestConfig::InitScriptData->get_init_script(
+                            $self->{'output_dir'},
+                            $self->{'binary'},
+                            $self->{'user'},
+                            $self->{'group'},
+                            $self->{'layout'}
+                  )});
+    }
+    if ($self->{'layout'} eq 'shinken') {
+        push(@{$exportedFiles}, { file => '/etc/shinken-specific.cfg',  data => $self->_get_shinken_specific_cfg() });
+        push(@{$exportedFiles}, { file => '/etc/schedulerd.cfg',        data => $self->_get_shinken_schedulerd_cfg() });
+        push(@{$exportedFiles}, { file => '/etc/pollerd.cfg',           data => $self->_get_shinken_pollerd_cfg() });
+        push(@{$exportedFiles}, { file => '/etc/brokerd.cfg',           data => $self->_get_shinken_brokerd_cfg() });
+        push(@{$exportedFiles}, { file => '/etc/reactionnerd.cfg',      data => $self->_get_shinken_reactionnerd_cfg() });
+        push(@{$exportedFiles}, { file => '/init.d/'.$init,             data => 'echo the shinken startup script has not been finished yet'});
+    } 
+
     for my $exportFile (@{$exportedFiles}) {
         open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
         print $fh $exportFile->{'data'};
@@ -704,11 +717,141 @@ sub _get_main_cfg {
         'max_debug_file_size'                           => 1000000,
     };
 
+    push(@{$main_cfg->{cfg_file}}, $self->{'output_dir'}.'/etc/shinken-specific.cfg') if $self->{'layout'} eq 'shinken';
     $main_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'hostcount'} * $self->{'services_per_host'} > 2000);
 
     my $merged     = $self->_merge_config_hashes($main_cfg, $self->{'main_cfg'});
     my $confstring = $self->_config_hash_to_string($merged);
     return($confstring);
+}
+
+########################################
+sub _get_shinken_specific_cfg {
+    my $self = shift;
+
+    my $max_workers = ($self->{'hostcount'} * $self->{'services_per_host'}) / 256 / 10; # 100000 services -> 39
+    $max_workers = ($max_workers < 10) ? 10 : abs($max_workers);
+    my $cfg = "
+define scheduler{
+       scheduler_name           scheduler-All
+       address                  localhost
+       port                     7768
+       spare                    0
+       realm                    All
+       weight                   1
+}
+define reactionner{
+       reactionner_name         reactionner-All
+       address                  localhost
+       port                     7769
+       spare                    0
+       realm                    All
+       manage_sub_realms        0
+}
+define poller{
+       poller_name              poller-All
+       address                  localhost
+       port                     7771
+       realm                    All
+       manage_sub_realms        0
+       min_workers              4
+       max_workers              $max_workers
+       processes_by_worker      256
+       polling_interval         1
+}
+define broker{
+       broker_name              broker-All
+       address                  localhost
+       port                     7772
+       spare                    0
+       realm                    All
+       manage_sub_realms        0
+       modules                  Service-Perfdata, Host-Perfdata
+}
+define module{
+       module_name              Service-Perfdata
+       module_type              service_perfdata
+       path                     $self->{'output_dir'}/var/service-perfdata
+}
+define module{
+       module_name              Host-Perfdata
+       module_type              host_perfdata
+       path                     $self->{'output_dir'}/var/host-perfdata
+}
+define realm{
+       realm_name               All
+       default                  1
+}
+";
+    return($cfg);
+}
+
+########################################
+sub _get_shinken_schedulerd_cfg {
+    my $self    = shift;
+
+    my $cfg = "[daemon]
+workdir=$self->{'output_dir'}/var
+pidfile=%(workdir)s/schedulerd.pid
+port=7768
+host=0.0.0.0
+user=$self->{'user'}
+group=$self->{'group'}
+idontcareaboutsecurity=0
+";
+}
+
+########################################
+sub _get_shinken_pollerd_cfg {
+    my $self    = shift;
+
+    my $cfg = "[daemon]
+workdir=$self->{'output_dir'}/var
+pidfile=%(workdir)s/pollerd.pid
+interval_poll=5
+maxfd=1024
+port=7771
+host=0.0.0.0
+user=$self->{'user'}
+group=$self->{'group'}
+idontcareaboutsecurity=no
+";
+}
+
+########################################
+sub _get_shinken_brokerd_cfg {
+    my $self    = shift;
+
+    ($self->{'shinken_dir'} = $self->{'binary'}) =~ s/\/[^\/]*?\/[^\/]*?$//g;
+    my $cfg = "[daemon]
+workdir=$self->{'output_dir'}/var
+pidfile=%(workdir)s/brokerd.pid
+interval_poll=5
+maxfd=1024
+port=7772
+host=0.0.0.0
+user=$self->{'user'}
+group=$self->{'group'}
+idontcareaboutsecurity=no
+modulespath=$self->{'shinken_dir'}/modules
+";
+}
+
+########################################
+sub _get_shinken_reactionnerd_cfg {
+    my $self    = shift;
+
+    my $cfg = "[daemon]
+workdir=$self->{'output_dir'}/var
+pidfile=%(workdir)s/reactionnerd.pid
+interval_poll=5
+maxfd=1024
+port=7769
+host=0.0.0.0
+user=$self->{'user'}
+group=$self->{'group'}
+idontcareaboutsecurity=no
+";
 }
 
 ########################################
