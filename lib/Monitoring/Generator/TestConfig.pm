@@ -547,7 +547,7 @@ define command{
 }
 define command{
     command_name    check-host-alive-parent
-    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG1\$
+    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG1\$ --hostname \$HOSTNAME\$
 }
 define command{
     command_name    notify-host
@@ -559,7 +559,7 @@ define command{
 }
 define command{
     command_name    check_service
-    command_line    \$USER1\$/test_servicecheck.pl --type=\$ARG1\$ --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$
+    command_line    \$USER1\$/test_servicecheck.pl --type=\$ARG1\$ --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$ --hostname \$HOSTNAME\$ --servicedesc \$SERVICEDESC\$
 }
 EOT
     return($cfg);

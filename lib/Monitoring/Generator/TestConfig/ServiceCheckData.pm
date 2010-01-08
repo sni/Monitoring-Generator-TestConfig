@@ -112,7 +112,7 @@ do_check();
 sub do_check {
     #####################################################################
     # parse and check cmd line arguments
-    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_total_crit, $opt_total_warn, $opt_type);
+    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_total_crit, $opt_total_warn, $opt_type, $opt_hostname, $opt_servicedesc);
     Getopt::Long::Configure('no_ignore_case');
     if(!GetOptions (
        "h"                        => \$opt_h,
@@ -124,6 +124,8 @@ sub do_check {
        "state-duration=i"         => \$opt_state_duration,
        "total-critical-on-host=i" => \$opt_total_crit,
        "total-warning-on-host=i"  => \$opt_total_warn,
+       "hostname=s"               => \$opt_hostname,
+       "servicedesc=s"            => \$opt_servicedesc,
     )) {
         pod2usage( { -verbose => 1, -message => 'error in options' } );
         exit 3;
@@ -163,33 +165,39 @@ sub do_check {
     };
 
     #########################################################################
+    my $servicedesc = $opt_servicedesc || 'servicecheck';
+
     my $hostname = hostname;
+    my $host_desc = "$hostname";
+    if(defined $opt_hostname) {
+        $host_desc = "$opt_hostname (checked by $hostname)";
+    }
 
     #########################################################################
     # not a random check?
     if(defined $opt_type and lc $opt_type ne 'random') {
         if(lc $opt_type eq 'ok') {
-            print "$hostname OK: ok servicecheck\n";
+            print "$host_desc OK: ok $servicedesc\n";
             exit 0;
         }
         if(lc $opt_type eq 'warning') {
-            print "$hostname WARNING: warning servicecheck\n";
+            print "$host_desc WARNING: warning $servicedesc\n";
             exit 1;
         }
         if(lc $opt_type eq 'critical') {
-            print "$hostname CRITICAL: critical servicecheck\n";
+            print "$host_desc CRITICAL: critical $servicedesc\n";
             exit 2;
         }
         if(lc $opt_type eq 'unknown') {
-            print "$hostname UNKNOWN: unknown servicecheck\n";
+            print "$host_desc UNKNOWN: unknown $servicedesc\n";
             exit 3;
         }
         if(lc $opt_type eq 'flap') {
             if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
-                print "$hostname FLAP: down servicecheck down\n";
+                print "$host_desc FLAP: down $servicedesc down\n";
                 exit 2;
             }
-            print "$hostname FLAP: up servicecheck up\n";
+            print "$host_desc FLAP: up $servicedesc up\n";
             exit 0;
         }
     }
@@ -210,7 +218,7 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-                print "$hostname CRITICAL: random servicecheck critical\n";
+                print "$host_desc CRITICAL: random $servicedesc critical\n";
                 exit 2;
             }
             # 30% chance for a warning
@@ -218,35 +226,35 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-                print "$hostname WARNING: random servicecheck warning\n";
+                print "$host_desc WARNING: random $servicedesc warning\n";
                 exit 1;
             }
 
             # 10% chance for a unknown
-            print "$hostname UNKNOWN: random servicecheck unknown\n";
+            print "$host_desc UNKNOWN: random $servicedesc unknown\n";
             exit 3;
         }
     }
     else {
         # already hit the minimum outage?
         if($opt_minimum_outage > $opt_state_duration) {
-            print "$hostname $opt_previous_state: random servicecheck minimum outage not reached yet\n";
+            print "$host_desc $opt_previous_state: random $servicedesc minimum outage not reached yet\n";
             exit $states->{$opt_previous_state};
         }
         # if the service is currently down, then there is a 30% chance to recover
         elsif($rand < 30) {
-            print "$hostname REVOVERED: random servicecheck recovered\n";
+            print "$host_desc REVOVERED: random $servicedesc recovered\n";
             exit 0;
         }
         else {
             # a failed check takes a while
             my $sleep = 5 + int(rand(20));
             sleep($sleep);
-            print "$hostname $opt_previous_state: random servicecheck unchanged\n";
+            print "$host_desc $opt_previous_state: random $servicedesc unchanged\n";
             exit $states->{$opt_previous_state};
         }
     }
 
-    print "$hostname OK: random servicecheck ok\n";
+    print "$host_desc OK: random $servicedesc ok\n";
     exit 0;
 }

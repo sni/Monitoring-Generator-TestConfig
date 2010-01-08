@@ -108,7 +108,7 @@ do_check();
 sub do_check {
     ######################################################################
     # parse and check cmd line arguments
-    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type, $opt_parent_state );
+    my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_type, $opt_parent_state, $opt_hostname );
     Getopt::Long::Configure('no_ignore_case');
     if(!GetOptions (
        "h"                        => \$opt_h,
@@ -119,6 +119,7 @@ sub do_check {
        "previous-state=s"         => \$opt_previous_state,
        "state-duration=i"         => \$opt_state_duration,
        "parent-state=s"           => \$opt_parent_state,
+       "hostname=s"               => \$opt_hostname,
     )) {
         pod2usage( { -verbose => 1, -message => 'error in options' } );
         exit 3;
@@ -158,8 +159,13 @@ sub do_check {
     #########################################################################
     my $hostname = hostname;
 
+    my $host_desc = "$hostname";
+    if(defined $opt_hostname) {
+        $host_desc = "$opt_hostname (checked by $hostname)";
+    }
+
     if($opt_parent_state ne 'UP') {
-        print "$hostname DOWN: $opt_type hostcheck: parent host down\n";
+        print "$host_desc DOWN: $opt_type hostcheck: parent host down\n";
         exit $states->{'UNREACHABLE'};
     }
 
@@ -167,11 +173,11 @@ sub do_check {
     # not a random check?
     if($opt_type ne 'random') {
         if(lc $opt_type eq 'up') {
-            print "$hostname OK: ok hostcheck\n";
+            print "$host_desc OK: ok hostcheck\n";
             exit 0;
         }
         if(lc $opt_type eq 'down') {
-            print "$hostname DOWN: down hostcheck\n";
+            print "$host_desc DOWN: down hostcheck\n";
             exit 2;
         }
         if(lc $opt_type eq 'flap') {
@@ -179,10 +185,10 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 2 + int(rand(5));
                 sleep($sleep);
-                print "$hostname FLAP: flap hostcheck down\n";
+                print "$host_desc FLAP: flap hostcheck down\n";
                 exit 2;
             }
-            print "$hostname FLAP: flap hostcheck up\n";
+            print "$host_desc FLAP: flap hostcheck up\n";
             exit 0;
         }
     }
@@ -204,7 +210,7 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 2 + int(rand(5));
                 sleep($sleep);
-                print "$hostname CRITICAL: random hostcheck critical\n";
+                print "$host_desc CRITICAL: random hostcheck critical\n";
                 exit 2;
             }
             # 30% chance for a warning
@@ -212,35 +218,35 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 2 + int(rand(5));
                 sleep($sleep);
-                print "$hostname WARNING: random hostcheck warning\n";
+                print "$host_desc WARNING: random hostcheck warning\n";
                 exit 1;
             }
 
             # 10% chance for a unknown
-            print "$hostname UNKNOWN: random hostcheck unknown\n";
+            print "$host_desc UNKNOWN: random hostcheck unknown\n";
             exit 3;
         }
     }
     else {
         # already hit the minimum outage?
         if($opt_minimum_outage > $opt_state_duration) {
-            print "$hostname $opt_previous_state: random hostcheck minimum outage not reached yet\n";
+            print "$host_desc $opt_previous_state: random hostcheck minimum outage not reached yet\n";
             exit $states->{$opt_previous_state};
         }
         # if the host is currently down, then there is a 30% chance to recover
         elsif($rand < 30) {
-            print "$hostname REVOVERED: random hostcheck recovered\n";
+            print "$host_desc REVOVERED: random hostcheck recovered\n";
             exit 0;
         }
         else {
             # a failed check takes a while
             my $sleep = 2 + int(rand(5));
             sleep($sleep);
-            print "$hostname $opt_previous_state: random hostcheck unchanged\n";
+            print "$host_desc $opt_previous_state: random hostcheck unchanged\n";
             exit $states->{$opt_previous_state};
         }
     }
 
-    print "$hostname OK: random hostcheck ok\n";
+    print "$host_desc OK: random hostcheck ok\n";
     exit 0;
 }
