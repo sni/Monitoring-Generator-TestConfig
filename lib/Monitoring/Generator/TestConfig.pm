@@ -308,50 +308,52 @@ sub _get_hosts_cfg {
     my @router;
 
     # router
-    my @routertypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'routercount'}, $self->{'router_types'}))};
+    if($self->{'routercount'} > 0) {
+        my @routertypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'routercount'}, $self->{'router_types'}))};
 
-    my $nr_length = length($self->{'routercount'});
-    for(my $x = 0; $x < $self->{'routercount'}; $x++) {
-        my $hostgroup = "router";
-        my $nr        = sprintf("%0".$nr_length."d", $x);
-        my $type      = shift @routertypes;
-        push @router, $self->{'prefix'}."test_router_$nr";
+        my $nr_length = length($self->{'routercount'});
+        for(my $x = 0; $x < $self->{'routercount'}; $x++) {
+            my $hostgroup = "router";
+            my $nr        = sprintf("%0".$nr_length."d", $x);
+            my $type      = shift @routertypes;
+            push @router, $self->{'prefix'}."test_router_$nr";
 
-        my $host = {
-            'host_name'     => $self->{'prefix'}."test_router_".$nr,
-            'alias'         => $self->{'prefix'}.$type."_".$nr,
-            'use'           => 'generic-host',
-            'address'       => '127.0.'.$x.'.1',
-            'hostgroups'    => $hostgroup,
-            'check_command' => 'check-host-alive!'.$type,
-            'icon_image'    => '../../docs/images/switch.png',
-        };
-        $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
+            my $host = {
+                'host_name'     => $self->{'prefix'}."test_router_".$nr,
+                'alias'         => $self->{'prefix'}.$type."_".$nr,
+                'use'           => 'generic-host',
+                'address'       => '127.0.'.$x.'.1',
+                'hostgroups'    => $hostgroup,
+                'check_command' => 'check-host-alive!'.$type,
+                'icon_image'    => '../../docs/images/switch.png',
+            };
+            $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
 
-        # first router gets additional infos
-        if($x == 0) {
-            $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
-            $host->{'notes'}          = 'just a notes string';
-            $host->{'icon_image_alt'} = 'icon alt string';
-            $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
+            # first router gets additional infos
+            if($x == 0) {
+                $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
+                $host->{'notes'}          = 'just a notes string';
+                $host->{'icon_image_alt'} = 'icon alt string';
+                $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
+            }
+            if($x == 1) {
+                $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
+                $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
+            }
+            if($x == 2) {
+                $host->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
+                $host->{'action_url'}     = 'http://google.com/?q=$HOSTNAME$';
+            }
+
+            $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
+            $cfg .= $self->_create_object_conf('host', $host);
         }
-        if($x == 1) {
-            $host->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
-            $host->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
-        }
-        if($x == 2) {
-            $host->{'notes_url'}      = 'http://google.com/?q=$HOSTNAME$';
-            $host->{'action_url'}     = 'http://google.com/?q=$HOSTNAME$';
-        }
-
-        $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
-        $cfg .= $self->_create_object_conf('host', $host);
     }
 
     # hosts
     my @hosttypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'}, $self->{'host_types'}))};
 
-    $nr_length = length($self->{'hostcount'});
+    my $nr_length = length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         my $hostgroup = "hostgroup_01";
         $hostgroup    = "hostgroup_02" if $x%5 == 1;
@@ -366,7 +368,7 @@ sub _get_hosts_cfg {
             'host_name'     => $self->{'prefix'}."test_host_".$nr,
             'alias'         => $self->{'prefix'}.$type."_".$nr,
             'use'           => 'generic-host',
-            'address'       => '127.0.'.$cur_router.($x + 1),
+            'address'       => '127.0.'.$cur_router.'.'.($x + 1),
             'hostgroups'    => $hostgroup.','.$type,
             'check_command' => 'check-host-alive!'.$type,
         };

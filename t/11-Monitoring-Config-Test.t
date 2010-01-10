@@ -23,6 +23,7 @@ $configtests = {
     "simple prefix"   => { 'overwrite_dir' => 1, 'prefix' => 'pre_' },
     "small standard"  => { 'overwrite_dir' => 1, 'routercount' =>  1, 'hostcount' =>   1, 'services_per_host' =>  1 },
     "medium standard" => { 'overwrite_dir' => 1, 'routercount' => 30, 'hostcount' => 400, 'services_per_host' => 25 },
+    "no router"       => { 'overwrite_dir' => 1, 'routercount' =>  0, 'hostcount' => 400, 'services_per_host' => 25 },
     "complex config"  => { 'overwrite_dir' => 1,
                            'routercount'               => 5,
                            'hostcount'                 => 50,
