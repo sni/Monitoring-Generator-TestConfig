@@ -3,8 +3,9 @@ Monitoring-Generator-TestConfig
 
 DESCRIPTION
 
-This modul generates test configurations for nagios and icinga. This can be useful if you
-want for doing load tests or testing addons and plugins.
+This modul generates test configurations for nagios, icinga and
+shinken. This can be useful for doing load tests or testing addons and
+plugins.
 
 INSTALLATION
 
@@ -21,9 +22,7 @@ This module requires no other modules
 
 COPYRIGHT AND LICENCE
 
-Put the correct copyright and licence information here.
-
-Copyright (C) 2009 by sven
+Copyright (C) 2009-2010 by Sven Nierlein <nierlein@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

@@ -12,11 +12,11 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.26';
+our $VERSION = '0.27_1';
 
 =head1 NAME
 
-Monitoring::Generator::TestConfig - Perl extension for generating test monitoring configurations (nagios/icinga)
+Monitoring::Generator::TestConfig - generate monitoring configurations (nagios/icinga/shinken)
 
 =head1 SYNOPSIS
 
@@ -799,6 +799,7 @@ user=$self->{'user'}
 group=$self->{'group'}
 idontcareaboutsecurity=0
 ";
+    return($cfg);
 }
 
 ########################################
@@ -816,13 +817,14 @@ user=$self->{'user'}
 group=$self->{'group'}
 idontcareaboutsecurity=no
 ";
+    return($cfg);
 }
 
 ########################################
 sub _get_shinken_brokerd_cfg {
     my $self    = shift;
 
-    ($self->{'shinken_dir'} = $self->{'binary'}) =~ s/\/[^\/]*?\/[^\/]*?$//g;
+    ($self->{'shinken_dir'} = $self->{'binary'}) =~ s/\/[^\/]*?\/[^\/]*?$//mxg;
     my $cfg = "[daemon]
 workdir=$self->{'output_dir'}/var
 pidfile=%(workdir)s/brokerd.pid
@@ -835,6 +837,7 @@ group=$self->{'group'}
 idontcareaboutsecurity=no
 modulespath=$self->{'shinken_dir'}/modules
 ";
+    return($cfg);
 }
 
 ########################################
@@ -852,6 +855,7 @@ user=$self->{'user'}
 group=$self->{'group'}
 idontcareaboutsecurity=no
 ";
+    return($cfg);
 }
 
 ########################################
