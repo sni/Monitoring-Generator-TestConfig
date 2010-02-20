@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.27_1';
+our $VERSION = '0.27_2';
 
 =head1 NAME
 
@@ -145,10 +145,16 @@ sub new {
     }
 
     # set some defaults
-    my $user        = getlogin();
-    my @userinfo    = getpwnam($user);
-    my @groupinfo   = getgrgid($userinfo[3]);
-    my $group       = $groupinfo[0];
+    my($user, $group);
+    if($^O eq "MSWin32") {
+        $user           = getlogin();
+        $group          = "nagios";
+    } else {
+        $user           = getlogin();
+        my @userinfo    = getpwnam($user);
+        my @groupinfo   = getgrgid($userinfo[3]);
+        $group          = $groupinfo[0];
+    }
 
     $self->{'user'}  = $user  unless defined $self->{'user'};
     $self->{'group'} = $group unless defined $self->{'group'};
