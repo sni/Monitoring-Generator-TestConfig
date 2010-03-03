@@ -1,5 +1,4 @@
-package # hidden from cpan
-    Monitoring::Generator::TestConfig::HostCheckData;
+package Monitoring::Generator::TestConfig::HostCheckData;
 
 use 5.000000;
 use strict;
@@ -211,6 +210,7 @@ sub do_check {
                 my $sleep = 2 + int(rand(5));
                 sleep($sleep);
                 print "$host_desc CRITICAL: random hostcheck critical\n";
+                print "sometimes with multiline and <b>html tags</b>\n";
                 exit 2;
             }
             # 30% chance for a warning
@@ -219,11 +219,13 @@ sub do_check {
                 my $sleep = 2 + int(rand(5));
                 sleep($sleep);
                 print "$host_desc WARNING: random hostcheck warning\n";
+                print "sometimes with multiline and <b>html tags</b>\n";
                 exit 1;
             }
 
             # 10% chance for a unknown
             print "$host_desc UNKNOWN: random hostcheck unknown\n";
+            print "sometimes with multiline and <b>html tags</b>\n";
             exit 3;
         }
     }
