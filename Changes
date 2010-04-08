@@ -1,6 +1,6 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
-0.27  Sat Feb 20 20:29:17 CET 2010
+0.28  Thu Apr  8 09:24:20 CEST 2010
 	added shinken layout
     fixed tests for windows
     added multiline and html plugin output to random checks

@@ -233,11 +233,13 @@ sub do_check {
         # already hit the minimum outage?
         if($opt_minimum_outage > $opt_state_duration) {
             print "$host_desc $opt_previous_state: random hostcheck minimum outage not reached yet\n";
+            print "sometimes with multiline and <b>html tags</b>\n";
             exit $states->{$opt_previous_state};
         }
         # if the host is currently down, then there is a 30% chance to recover
         elsif($rand < 30) {
             print "$host_desc REVOVERED: random hostcheck recovered\n";
+            print "sometimes with multiline and <b>html tags</b>\n";
             exit 0;
         }
         else {
@@ -245,10 +247,12 @@ sub do_check {
             my $sleep = 2 + int(rand(5));
             sleep($sleep);
             print "$host_desc $opt_previous_state: random hostcheck unchanged\n";
+            print "sometimes with multiline and <b>html tags</b>\n";
             exit $states->{$opt_previous_state};
         }
     }
 
     print "$host_desc OK: random hostcheck ok\n";
+    print "sometimes with multiline and <b>html tags</b>\n";
     exit 0;
 }

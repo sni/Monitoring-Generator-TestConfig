@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.27_3';
+our $VERSION = '0.28';
 
 =head1 NAME
 
@@ -484,7 +484,7 @@ sub _get_services_cfg {
                 $service->{'notes_url'}      = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/README';
                 $service->{'notes'}          = 'just a notes string';
                 $service->{'icon_image_alt'} = 'icon alt string';
-                $service->{'icon_image'}     = '../../docs/images/tip.gif';
+                $service->{'icon_image'}     = 'tux.png';
                 $service->{'action_url'}     = 'http://search.cpan.org/dist/Monitoring-Generator-TestConfig/';
             }
             if($y == 1) {
