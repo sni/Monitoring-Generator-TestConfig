@@ -199,6 +199,12 @@ sub do_check {
             print "$host_desc FLAP: up $servicedesc up\n";
             exit 0;
         }
+        if(lc $opt_type eq 'block') {
+            print "$host_desc BLOCK: blocking.... $servicedesc\n";
+            sleep(3600);
+            exit 0;
+        }
+
     }
 
     my $rand     = int(rand(100));

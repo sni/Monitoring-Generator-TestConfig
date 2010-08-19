@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.28';
+our $VERSION = '0.30';
 
 =head1 NAME
 
@@ -54,9 +54,9 @@ Arguments are in key-value pairs.
     main_cfg                    overwrite/add settings from the nagios.cfg/icinga.cfg
     hostfailrate                chance of a host to fail, Default 2%
     servicefailrate             chance of a service to fail, Default 5%
-    host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random
+    host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random,block
     router_types                key/value settings for percentage of hosttypes for router
-    service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random
+    service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random,block
 
 =back
 
@@ -88,6 +88,7 @@ sub new {
                                     'flap'         => 20,
                                     'random'       => 20,
                                     'pending'      => 20,
+                                    'block'        => 0,
                         },
                     'host_types'          => {
                                     'down'         => 5,
@@ -95,6 +96,7 @@ sub new {
                                     'flap'         => 5,
                                     'random'       => 35,
                                     'pending'      => 5,
+                                    'block'        => 0,
                         },
                     'service_types'       => {
                                     'ok'           => 50,
@@ -104,6 +106,7 @@ sub new {
                                     'pending'      => 5,
                                     'flap'         => 5,
                                     'random'       => 25,
+                                    'block'        => 0,
                         },
                 };
     bless $self, $class;
@@ -263,7 +266,7 @@ sub create {
         push(@{$exportedFiles}, { file => '/etc/brokerd.cfg',           data => $self->_get_shinken_brokerd_cfg() });
         push(@{$exportedFiles}, { file => '/etc/reactionnerd.cfg',      data => $self->_get_shinken_reactionnerd_cfg() });
         push(@{$exportedFiles}, { file => '/init.d/'.$init,             data => 'echo the shinken startup script has not been finished yet'});
-    } 
+    }
 
     for my $exportFile (@{$exportedFiles}) {
         open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
@@ -407,6 +410,7 @@ sub _get_hostgroups_cfg {
         { name => 'pending',         alias => 'All Pending Hosts'  },
         { name => 'random',          alias => 'All Random Hosts'   },
         { name => 'flap',            alias => 'All Flapping Hosts' },
+        { name => 'block',           alias => 'All Blocking Hosts' },
     ];
     my $cfg = "";
     for my $hostgroup (@{$hostgroups}) {
@@ -521,6 +525,7 @@ sub _get_servicegroups_cfg {
         { name => 'pending',         alias => 'All Pending Services'  },
         { name => 'random',          alias => 'All Random Services'   },
         { name => 'flap',            alias => 'All Flapping Services' },
+        { name => 'block',           alias => 'All Blocking Services' },
     ];
     my $cfg = "";
     for my $servicegroup (@{$servicegroups}) {
@@ -945,12 +950,20 @@ sub _get_types {
     my $count = shift;
     my $types = shift;
 
+    my $total = 0;
+    for my $type (keys %{$types}) {
+        $total += $types->{$type};
+    }
+
     my @types;
     for my $type (keys %{$types}) {
         my $perc = $types->{$type};
-        for(1..ceil($count/100*$perc)) {
+        for(1..ceil($count/$total*$perc)) {
             push @types, $type;
         }
+    }
+    if(scalar @types < $count) {
+        warn("got only ".scalar @types." types, expected ".$count);
     }
     return(\@types);
 }
@@ -1015,7 +1028,8 @@ Create a sample config with manually overriden host/service settings:
                                         'up'           => 50,
                                         'flap'         => 5,
                                         'pending'      => 5,
-                                        'random'       => 35,
+                                        'random'       => 30,
+                                        'block'        => 5,
                             },
                         'service_types'             => {
                                         'ok'           => 50, # percentage
@@ -1024,7 +1038,8 @@ Create a sample config with manually overriden host/service settings:
                                         'critical'     => 5,
                                         'pending'      => 5,
                                         'flap'         => 5,
-                                        'random'       => 25,
+                                        'random'       => 20,
+                                        'block'        => 5,
                             },
     );
     $mgt->create();

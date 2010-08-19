@@ -190,6 +190,11 @@ sub do_check {
             print "$host_desc FLAP: flap hostcheck up\n";
             exit 0;
         }
+        if(lc $opt_type eq 'block') {
+            print "$host_desc BLOCK: blocking....\n";
+            sleep(3600);
+            exit 0;
+        }
     }
 
     #########################################################################

@@ -1,5 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.30  Thu Aug 19 21:01:57 CEST 2010
+	added blocking type
+
 0.28  Thu Apr  8 09:24:20 CEST 2010
 	added shinken layout
     fixed tests for windows

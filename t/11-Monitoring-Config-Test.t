@@ -46,14 +46,16 @@ $configtests = {
                                            'up'           => 20,
                                            'flap'         => 20,
                                            'pending'      => 20,
-                                           'random'       => 20,
+                                           'random'       => 15,
+                                           'block'        => 5,
                                },
                            'host_types'                => {
                                            'down'         => 5,
                                            'up'           => 50,
                                            'flap'         => 5,
                                            'pending'      => 5,
-                                           'random'       => 35,
+                                           'random'       => 15,
+                                           'block'        => 5,
                                },
                            'service_types'             => {
                                            'ok'           => 50,
@@ -62,7 +64,8 @@ $configtests = {
                                            'critical'     => 5,
                                            'pending'      => 5,
                                            'flap'         => 5,
-                                           'random'       => 25,
+                                           'random'       => 20,
+                                           'block'        => 5,
                                },
                          },
 };
