@@ -1,5 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.32  Thu Aug 19 21:01:57 CEST 2010
+	added verbose output to init scripts config check
+
 0.30  Thu Aug 19 21:01:57 CEST 2010
 	added blocking type
 

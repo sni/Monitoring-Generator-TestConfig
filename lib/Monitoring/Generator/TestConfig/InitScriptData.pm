@@ -182,9 +182,9 @@ case "$1" in
 		printstatus___LAYOUT__ $Bin
 		;;
 
-	checkconfig)
+	check|checkconfig)
 		printf "Running configuration check..."
-		$Bin -v $CfgFile > /dev/null 2>&1;
+		$Bin -v $CfgFile
 		if [ $? -eq 0 ]; then
 			echo " OK."
 		else
