@@ -103,8 +103,10 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 use Sys::Hostname;
+use Time::HiRes qw(gettimeofday tv_interval);
 
 #########################################################################
+my ($t0, $t1, $rt, $perfdata);
 do_check();
 
 #########################################################################
@@ -112,6 +114,7 @@ sub do_check {
     #####################################################################
     # parse and check cmd line arguments
     my ($opt_h, $opt_v, $opt_failchance, $opt_previous_state, $opt_minimum_outage, $opt_state_duration, $opt_total_crit, $opt_total_warn, $opt_type, $opt_hostname, $opt_servicedesc);
+    $t0 = [gettimeofday];
     Getopt::Long::Configure('no_ignore_case');
     if(!GetOptions (
        "h"                        => \$opt_h,
@@ -176,32 +179,38 @@ sub do_check {
     # not a random check?
     if(defined $opt_type and lc $opt_type ne 'random') {
         if(lc $opt_type eq 'ok') {
-            print "$host_desc OK: ok $servicedesc\n";
+	    $perfdata = _perfdata();
+            print "$host_desc OK: ok $servicedesc $perfdata\n";
             exit 0;
         }
         if(lc $opt_type eq 'warning') {
-            print "$host_desc WARNING: warning $servicedesc\n";
+	    $perfdata = _perfdata();
+            print "$host_desc WARNING: warning $servicedesc $perfdata\n";
             exit 1;
         }
         if(lc $opt_type eq 'critical') {
-            print "$host_desc CRITICAL: critical $servicedesc\n";
+	    $perfdata = _perfdata();
+            print "$host_desc CRITICAL: critical $servicedesc $perfdata\n";
             exit 2;
         }
         if(lc $opt_type eq 'unknown') {
-            print "$host_desc UNKNOWN: unknown $servicedesc\n";
+	    $perfdata = _perfdata();
+            print "$host_desc UNKNOWN: unknown $servicedesc $perfdata\n";
             exit 3;
         }
         if(lc $opt_type eq 'flap') {
+            $perfdata = _perfdata();
             if($opt_previous_state eq 'OK' or $opt_previous_state eq 'UP') {
-                print "$host_desc FLAP: down $servicedesc down\n";
+                print "$host_desc FLAP: down $servicedesc down $perfdata\n";
                 exit 2;
             }
-            print "$host_desc FLAP: up $servicedesc up\n";
+            print "$host_desc FLAP: up $servicedesc up $perfdata\n";
             exit 0;
         }
         if(lc $opt_type eq 'block') {
-            print "$host_desc BLOCK: blocking.... $servicedesc\n";
             sleep(3600);
+	    $perfdata = _perfdata();
+            print "$host_desc BLOCK: blocking.... $servicedesc $perfdata\n";
             exit 0;
         }
 
@@ -223,7 +232,8 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-                print "$host_desc CRITICAL: random $servicedesc critical\n";
+	    	$perfdata = _perfdata();
+                print "$host_desc CRITICAL: random $servicedesc critical $perfdata\n";
                 print "sometimes with multiline and <b>html tags</b>\n";
                 exit 2;
             }
@@ -232,13 +242,15 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-                print "$host_desc WARNING: random $servicedesc warning\n";
+	    	$perfdata = _perfdata();
+                print "$host_desc WARNING: random $servicedesc warning $perfdata\n";
                 print "sometimes with multiline and <b>html tags</b>\n";
                 exit 1;
             }
 
             # 10% chance for a unknown
-            print "$host_desc UNKNOWN: random $servicedesc unknown\n";
+	    $perfdata = _perfdata();
+            print "$host_desc UNKNOWN: random $servicedesc unknown $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit 3;
         }
@@ -246,27 +258,37 @@ sub do_check {
     else {
         # already hit the minimum outage?
         if($opt_minimum_outage > $opt_state_duration) {
-            print "$host_desc $opt_previous_state: random $servicedesc minimum outage not reached yet\n";
+	    $perfdata = _perfdata();
+            print "$host_desc $opt_previous_state: random $servicedesc minimum outage not reached yet $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit $states->{$opt_previous_state};
         }
         # if the service is currently down, then there is a 30% chance to recover
         elsif($rand < 30) {
-            print "$host_desc REVOVERED: random $servicedesc recovered\n";
+	    $perfdata = _perfdata();
+            print "$host_desc REVOVERED: random $servicedesc recovered $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit 0;
         }
         else {
             # a failed check takes a while
             my $sleep = 5 + int(rand(20));
+            $perfdata = _perfdata();
             sleep($sleep);
-            print "$host_desc $opt_previous_state: random $servicedesc unchanged\n";
+            print "$host_desc $opt_previous_state: random $servicedesc unchanged $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit $states->{$opt_previous_state};
         }
     }
 
-    print "$host_desc OK: random $servicedesc ok\n";
+    $perfdata = _perfdata();
+    print "$host_desc OK: random $servicedesc ok $perfdata\n";
     print "sometimes with multiline and <b>html tags</b>\n";
     exit 0;
+}
+
+sub _perfdata {
+    $t1 = [gettimeofday];
+    $rt = tv_interval $t0, $t1;
+    return "| runtime=$rt" 
 }
