@@ -179,22 +179,22 @@ sub do_check {
     # not a random check?
     if(defined $opt_type and lc $opt_type ne 'random') {
         if(lc $opt_type eq 'ok') {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc OK: ok $servicedesc $perfdata\n";
             exit 0;
         }
         if(lc $opt_type eq 'warning') {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc WARNING: warning $servicedesc $perfdata\n";
             exit 1;
         }
         if(lc $opt_type eq 'critical') {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc CRITICAL: critical $servicedesc $perfdata\n";
             exit 2;
         }
         if(lc $opt_type eq 'unknown') {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc UNKNOWN: unknown $servicedesc $perfdata\n";
             exit 3;
         }
@@ -209,7 +209,7 @@ sub do_check {
         }
         if(lc $opt_type eq 'block') {
             sleep(3600);
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc BLOCK: blocking.... $servicedesc $perfdata\n";
             exit 0;
         }
@@ -232,7 +232,7 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-	    	$perfdata = _perfdata();
+                $perfdata = _perfdata();
                 print "$host_desc CRITICAL: random $servicedesc critical $perfdata\n";
                 print "sometimes with multiline and <b>html tags</b>\n";
                 exit 2;
@@ -242,14 +242,14 @@ sub do_check {
                 # a failed check takes a while
                 my $sleep = 5 + int(rand(20));
                 sleep($sleep);
-	    	$perfdata = _perfdata();
+                $perfdata = _perfdata();
                 print "$host_desc WARNING: random $servicedesc warning $perfdata\n";
                 print "sometimes with multiline and <b>html tags</b>\n";
                 exit 1;
             }
 
             # 10% chance for a unknown
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc UNKNOWN: random $servicedesc unknown $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit 3;
@@ -258,14 +258,14 @@ sub do_check {
     else {
         # already hit the minimum outage?
         if($opt_minimum_outage > $opt_state_duration) {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc $opt_previous_state: random $servicedesc minimum outage not reached yet $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit $states->{$opt_previous_state};
         }
         # if the service is currently down, then there is a 30% chance to recover
         elsif($rand < 30) {
-	    $perfdata = _perfdata();
+            $perfdata = _perfdata();
             print "$host_desc REVOVERED: random $servicedesc recovered $perfdata\n";
             print "sometimes with multiline and <b>html tags</b>\n";
             exit 0;
