@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.30';
+our $VERSION = '0.32';
 
 =head1 NAME
 
