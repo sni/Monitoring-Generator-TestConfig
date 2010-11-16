@@ -12,7 +12,7 @@ use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
 
-our $VERSION = '0.32';
+our $VERSION = '0.34';
 
 =head1 NAME
 
@@ -57,6 +57,7 @@ Arguments are in key-value pairs.
     host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random,block
     router_types                key/value settings for percentage of hosttypes for router
     service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random,block
+    skip_dependencys            no service dependencys will be exported
 
 =back
 
@@ -82,6 +83,7 @@ sub new {
                     'service_settings'    => {},
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
+                    'skip_dependencys'    => 0,
                     'router_types'        => {
                                     'down'         => 20,
                                     'up'           => 20,
@@ -236,15 +238,24 @@ sub create {
 
     # export config files and plugins
     my $init = $self->{'layout'};
+    my $objects = {};
+    $objects = $self->_set_hosts_cfg($objects);
+    $objects = $self->_set_hostgroups_cfg($objects);
+    $objects = $self->_set_services_cfg($objects);
+    $objects = $self->_set_servicegroups_cfg($objects);
+    $objects = $self->_set_contacts_cfg($objects);
+    $objects = $self->_set_commands_cfg($objects);
+    $objects = $self->_set_timeperiods_cfg($objects);
     my $exportedFiles = [
         { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" },
-        { file => '/etc/hosts.cfg',                 data => $self->_get_hosts_cfg()                       },
-        { file => '/etc/hostgroups.cfg',            data => $self->_get_hostgroups_cfg()                  },
-        { file => '/etc/services.cfg',              data => $self->_get_services_cfg()                    },
-        { file => '/etc/servicegroups.cfg',         data => $self->_get_servicegroups_cfg()               },
-        { file => '/etc/contacts.cfg',              data => $self->_get_contacts_cfg()                    },
-        { file => '/etc/commands.cfg',              data => $self->_get_commands_cfg()                    },
-        { file => '/etc/timeperiods.cfg',           data => $self->_get_timeperiods_cfg()                 },
+        { file => '/etc/hosts.cfg',                 data => $self->_create_object_conf('host',          $objects->{'host'})         },
+        { file => '/etc/hostgroups.cfg',            data => $self->_create_object_conf('hostgroup',     $objects->{'hostgroup'})    },
+        { file => '/etc/services.cfg',              data => $self->_create_object_conf('service',       $objects->{'service'})      },
+        { file => '/etc/servicegroups.cfg',         data => $self->_create_object_conf('servicegroup',  $objects->{'servicegroup'}) },
+        { file => '/etc/contacts.cfg',              data => $self->_create_object_conf('contactgroup',  $objects->{'contactgroup'})
+                                                           .$self->_create_object_conf('contact',       $objects->{'contact'})      },
+        { file => '/etc/commands.cfg',              data => $self->_create_object_conf('command',       $objects->{'command'})      },
+        { file => '/etc/timeperiods.cfg',           data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   },
         { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
         { file => '/plugins/test_servicecheck.pl',  data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => '/plugins/test_hostcheck.pl',     data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
@@ -289,8 +300,11 @@ sub create {
 
 
 ########################################
-sub _get_hosts_cfg {
-    my $self = shift;
+sub _set_hosts_cfg {
+    my $self    = shift;
+    my $objects = shift;
+
+    $objects->{'host'} = [] unless defined $objects->{'host'};
 
     my $hostconfig = {
         'name'                           => 'generic-host',
@@ -313,7 +327,7 @@ sub _get_hosts_cfg {
     };
 
     my $merged = $self->_merge_config_hashes($hostconfig, $self->{'host_settings'});
-    my $cfg    = $self->_create_object_conf('host', $merged);
+    push @{$objects->{'host'}}, $merged;
     my @router;
 
     # router
@@ -355,7 +369,7 @@ sub _get_hosts_cfg {
             }
 
             $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
-            $cfg .= $self->_create_object_conf('host', $host);
+            push @{$objects->{'host'}}, $host;
         }
     }
 
@@ -388,46 +402,41 @@ sub _get_hosts_cfg {
         $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
 
         $host = $self->_merge_config_hashes($host, $self->{'host_settings'});
-        $cfg .= $self->_create_object_conf('host', $host);
+        push @{$objects->{'host'}}, $host;
     }
 
-    return($cfg);
+    return($objects);
 }
 
 ########################################
-sub _get_hostgroups_cfg {
-    my $self = shift;
+sub _set_hostgroups_cfg {
+    my $self    = shift;
+    my $objects = shift;
 
-    my $hostgroups = [
-        { name => 'router',          alias => 'All Router Hosts'   },
-        { name => 'hostgroup_01',    alias => 'hostgroup_alias_01' },
-        { name => 'hostgroup_02',    alias => 'hostgroup_alias_02' },
-        { name => 'hostgroup_03',    alias => 'hostgroup_alias_03' },
-        { name => 'hostgroup_04',    alias => 'hostgroup_alias_04' },
-        { name => 'hostgroup_05',    alias => 'hostgroup_alias_05' },
-        { name => 'up',              alias => 'All Up Hosts'       },
-        { name => 'down',            alias => 'All Down Hosts'     },
-        { name => 'pending',         alias => 'All Pending Hosts'  },
-        { name => 'random',          alias => 'All Random Hosts'   },
-        { name => 'flap',            alias => 'All Flapping Hosts' },
-        { name => 'block',           alias => 'All Blocking Hosts' },
-    ];
-    my $cfg = "";
-    for my $hostgroup (@{$hostgroups}) {
-        $cfg .= "
-define hostgroup {
-    hostgroup_name          $hostgroup->{'name'}
-    alias                   $hostgroup->{'alias'}
-}
-";
-    }
+    $objects->{'hostgroup'} = [] unless defined $objects->{'hostgroup'};
+    push @{$objects->{'hostgroup'}},
+        { hostgroup_name => 'router',          alias => 'All Router Hosts'   },
+        { hostgroup_name => 'hostgroup_01',    alias => 'hostgroup_alias_01' },
+        { hostgroup_name => 'hostgroup_02',    alias => 'hostgroup_alias_02' },
+        { hostgroup_name => 'hostgroup_03',    alias => 'hostgroup_alias_03' },
+        { hostgroup_name => 'hostgroup_04',    alias => 'hostgroup_alias_04' },
+        { hostgroup_name => 'hostgroup_05',    alias => 'hostgroup_alias_05' },
+        { hostgroup_name => 'up',              alias => 'All Up Hosts'       },
+        { hostgroup_name => 'down',            alias => 'All Down Hosts'     },
+        { hostgroup_name => 'pending',         alias => 'All Pending Hosts'  },
+        { hostgroup_name => 'random',          alias => 'All Random Hosts'   },
+        { hostgroup_name => 'flap',            alias => 'All Flapping Hosts' },
+        { hostgroup_name => 'block',           alias => 'All Blocking Hosts' };
 
-    return($cfg);
+    return($objects);
 }
 
 ########################################
-sub _get_services_cfg {
+sub _set_services_cfg {
     my $self = shift;
+    my $objects = shift;
+
+    $objects->{'service'} = [] unless defined $objects->{'service'};
 
     my $serviceconfig = {
         'name'                            => 'generic-service',
@@ -456,7 +465,7 @@ sub _get_services_cfg {
     };
 
     my $merged = $self->_merge_config_hashes($serviceconfig, $self->{'service_settings'});
-    my $cfg    = $self->_create_object_conf('service', $merged);
+    push @{$objects->{'service'}}, $merged;
 
     my @servicetypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'} * $self->{'services_per_host'}, $self->{'service_types'}))};
 
@@ -501,113 +510,110 @@ sub _get_services_cfg {
             }
 
             $service = $self->_merge_config_hashes($service, $self->{'service_settings'});
-            $cfg .= $self->_create_object_conf('service', $service);
+            push @{$objects->{'service'}}, $service;
         }
     }
 
-    return($cfg);
+    return($objects);
 }
 
 ########################################
-sub _get_servicegroups_cfg {
+sub _set_servicegroups_cfg {
     my $self = shift;
+    my $objects = shift;
 
-    my $servicegroups = [
-        { name => 'servicegroup_01', alias => 'servicegroup_alias_01' },
-        { name => 'servicegroup_02', alias => 'servicegroup_alias_02' },
-        { name => 'servicegroup_03', alias => 'servicegroup_alias_03' },
-        { name => 'servicegroup_04', alias => 'servicegroup_alias_04' },
-        { name => 'servicegroup_05', alias => 'servicegroup_alias_05' },
-        { name => 'ok',              alias => 'All Ok Services'       },
-        { name => 'warning',         alias => 'All Warning Services'  },
-        { name => 'unknown',         alias => 'All Unknown Services'  },
-        { name => 'critical',        alias => 'All Critical Services' },
-        { name => 'pending',         alias => 'All Pending Services'  },
-        { name => 'random',          alias => 'All Random Services'   },
-        { name => 'flap',            alias => 'All Flapping Services' },
-        { name => 'block',           alias => 'All Blocking Services' },
-    ];
-    my $cfg = "";
-    for my $servicegroup (@{$servicegroups}) {
-        $cfg .= "
-define servicegroup {
-    servicegroup_name       $servicegroup->{'name'}
-    alias                   $servicegroup->{'alias'}
-}
-";
-    }
-    return($cfg);
+    $objects->{'servicegroup'} = [] unless defined $objects->{'servicegroup'};
+    push @{$objects->{'servicegroup'}},
+        { servicegroup_name => 'servicegroup_01', alias => 'servicegroup_alias_01' },
+        { servicegroup_name => 'servicegroup_02', alias => 'servicegroup_alias_02' },
+        { servicegroup_name => 'servicegroup_03', alias => 'servicegroup_alias_03' },
+        { servicegroup_name => 'servicegroup_04', alias => 'servicegroup_alias_04' },
+        { servicegroup_name => 'servicegroup_05', alias => 'servicegroup_alias_05' },
+        { servicegroup_name => 'ok',              alias => 'All Ok Services'       },
+        { servicegroup_name => 'warning',         alias => 'All Warning Services'  },
+        { servicegroup_name => 'unknown',         alias => 'All Unknown Services'  },
+        { servicegroup_name => 'critical',        alias => 'All Critical Services' },
+        { servicegroup_name => 'pending',         alias => 'All Pending Services'  },
+        { servicegroup_name => 'random',          alias => 'All Random Services'   },
+        { servicegroup_name => 'flap',            alias => 'All Flapping Services' },
+        { servicegroup_name => 'block',           alias => 'All Blocking Services' };
+
+    return($objects);
 }
 
 ########################################
-sub _get_contacts_cfg {
-    my $self = shift;
-    my $cfg = <<EOT;
-define contactgroup{
-    contactgroup_name       test_contact
-    alias                   test_contacts_alias
-    members                 test_contact
-}
-define contact{
-    contact_name                    test_contact
-    alias                           test_contact_alias
-    service_notification_period     24x7
-    host_notification_period        24x7
-    service_notification_options    w,u,c,r
-    host_notification_options       d,r
-    service_notification_commands   notify-service
-    host_notification_commands      notify-host
-    email                           nobody\@localhost
-}
-EOT
-    return($cfg);
+sub _set_contacts_cfg {
+    my $self    = shift;
+    my $objects = shift;
+
+    $objects->{'contactgroup'} = [] unless defined $objects->{'contactgroup'};
+    push @{$objects->{'contactgroup'}}, {
+        'contactgroup_name'  =>  'test_contact',
+        'alias'              => 'test_contacts_alias',
+        'members'            => 'test_contact',
+    };
+
+    $objects->{'contact'} = [] unless defined $objects->{'contact'};
+    push @{$objects->{'contact'}}, {
+        'contact_name'                  => 'test_contact',
+        'alias'                         => 'test_contact_alias',
+        'service_notification_period'   => '24x7',
+        'host_notification_period'      => '24x7',
+        'service_notification_options'  => 'w,u,c,r',
+        'host_notification_options'     => 'd,r',
+        'service_notification_commands' => 'notify-service',
+        'host_notification_commands'    => 'notify-host',
+        'email'                         => 'nobody\@localhost',
+    };
+
+    return($objects);
 }
 
 ########################################
-sub _get_commands_cfg {
-    my $self = shift;
-    my $cfg = <<EOT;
-define command{
-    command_name    check-host-alive
-    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --hostname \$HOSTNAME\$
-}
-define command{
-    command_name    check-host-alive-parent
-    command_line    \$USER1\$/test_hostcheck.pl --type=\$ARG1\$ --failchance=$self->{'hostfailrate'}% --previous-state=\$HOSTSTATE\$ --state-duration=\$HOSTDURATIONSEC\$ --parent-state=\$ARG2\$ --hostname \$HOSTNAME\$
-}
-define command{
-    command_name    notify-host
-    command_line    sleep 1 && /bin/true
-}
-define command{
-    command_name    notify-service
-    command_line    sleep 1 && /bin/true
-}
-define command{
-    command_name    check_service
-    command_line    \$USER1\$/test_servicecheck.pl --type=\$ARG1\$ --failchance=$self->{'servicefailrate'}% --previous-state=\$SERVICESTATE\$ --state-duration=\$SERVICEDURATIONSEC\$ --total-critical-on-host=\$TOTALHOSTSERVICESCRITICAL\$ --total-warning-on-host=\$TOTALHOSTSERVICESWARNING\$ --hostname \$HOSTNAME\$ --servicedesc \$SERVICEDESC\$
-}
-EOT
-    return($cfg);
+sub _set_commands_cfg {
+    my $self    = shift;
+    my $objects = shift;
+
+    $objects->{'command'} = [] unless defined $objects->{'command'};
+    push @{$objects->{'command'}}, {
+        'command_name' => 'check-host-alive',
+        'command_line' => '$USER1$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --hostname $HOSTNAME$',
+    }, {
+        'command_name' => 'check-host-alive-parent',
+        'command_line' => '$USER1$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --parent-state=$ARG2$ --hostname $HOSTNAME$',
+    }, {
+        'command_name' => 'notify-host',
+        'command_line' => 'sleep 1 && /bin/true',
+    }, {
+        'command_name' => 'notify-service',
+        'command_line' => 'sleep 1 && /bin/true',
+    }, {
+        'command_name' => 'check_service',
+        'command_line' => '$USER1$/test_servicecheck.pl --type=$ARG1$ --failchance='.$self->{'servicefailrate'}.'% --previous-state=$SERVICESTATE$ --state-duration=$SERVICEDURATIONSEC$ --total-critical-on-host=$TOTALHOSTSERVICESCRITICAL$ --total-warning-on-host=$TOTALHOSTSERVICESWARNING$ --hostname $HOSTNAME$ --servicedesc $SERVICEDESC$',
+    };
+
+    return($objects);
 }
 
 ########################################
-sub _get_timeperiods_cfg {
-    my $self = shift;
-    my $cfg = <<EOT;
-define timeperiod{
-    timeperiod_name 24x7
-    alias           24 Hours A Day, 7 Days A Week
-    sunday          00:00-24:00
-    monday          00:00-24:00
-    tuesday         00:00-24:00
-    wednesday       00:00-24:00
-    thursday        00:00-24:00
-    friday          00:00-24:00
-    saturday        00:00-24:00
-}
-EOT
-    return($cfg);
+sub _set_timeperiods_cfg {
+    my $self    = shift;
+    my $objects = shift;
+
+    $objects->{'timeperiod'} = [] unless defined $objects->{'timeperiod'};
+    push @{$objects->{'timeperiod'}}, {
+        'timeperiod_name' => '24x7',
+        'alias'           => '24 Hours A Day, 7 Days A Week',
+        'sunday'          => '00:00-24:00',
+        'monday'          => '00:00-24:00',
+        'tuesday'         => '00:00-24:00',
+        'wednesday'       => '00:00-24:00',
+        'thursday'        => '00:00-24:00',
+        'friday'          => '00:00-24:00',
+        'saturday'        => '00:00-24:00',
+    };
+
+    return($objects);
 }
 
 ########################################
@@ -900,11 +906,9 @@ sub _config_hash_to_string {
         my $value = $conf->{$key};
         if(ref($value) eq 'ARRAY') {
             for my $newval (@{$value}) {
-                #$confstring .= sprintf("%-30s", $key)." = ".$newval."\n";
                 $confstring .= $key."=".$newval."\n";
             }
         } else {
-            #$confstring .= sprintf("%-30s", $key)." = ".$value."\n";
             $confstring .= $key."=".$value."\n";
         }
     }
@@ -915,18 +919,21 @@ sub _config_hash_to_string {
 
 ########################################
 sub _create_object_conf {
-    my $self = shift;
-    my $type = shift;
-    my $conf = shift;
-    my $confstring = 'define '.$type."{\n";
+    my $self    = shift;
+    my $type    = shift;
+    my $objects = shift;
 
-    for my $key (sort keys %{$conf}) {
-        my $value = $conf->{$key};
-        $confstring .= '  '.sprintf("%-30s", $key)." ".$value."\n";
+    my $cfg = "";
+    for my $obj (@{$objects}) {
+        $cfg .= 'define '.$type."{\n";
+        for my $key (sort _sort_object_key keys %{$obj}) {
+            my $value = $obj->{$key};
+            $cfg .= '  '.sprintf("%-30s", $key)." ".$value."\n";
+        }
+        $cfg .= "}\n\n";
     }
-    $confstring .= "}\n\n";
 
-    return($confstring);
+    return($cfg);
 }
 
 
@@ -989,6 +996,15 @@ EOT
     return $pl;
 }
 
+
+########################################
+sub _sort_object_key {
+    return -5 if $a eq 'name';
+    return -4 if $a =~ m/_name$/mx;
+    return -3 if $a =~ m/_description$/mx;
+    return -2 if $a eq 'use';
+    return $a cmp $b;
+}
 
 1;
 

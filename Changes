@@ -1,5 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.34  Thu Sep  2 13:26:43 CEST 2010
+	added sample service dependencys
+
 0.32  Thu Sep  2 13:26:43 CEST 2010
 	added verbose output to init scripts config check
 	added perfdata to service checks (thanks Jörg)
