@@ -1,5 +1,16 @@
 Changes
 examples/create_test_config.pl
+inc/Module/AutoInstall.pm
+inc/Module/Install.pm
+inc/Module/Install/AutoInstall.pm
+inc/Module/Install/Base.pm
+inc/Module/Install/Can.pm
+inc/Module/Install/Fetch.pm
+inc/Module/Install/Include.pm
+inc/Module/Install/Makefile.pm
+inc/Module/Install/Metadata.pm
+inc/Module/Install/Win32.pm
+inc/Module/Install/WriteAll.pm
 lib/Monitoring/Generator/TestConfig.pm
 lib/Monitoring/Generator/TestConfig/HostCheckData.pm
 lib/Monitoring/Generator/TestConfig/InitScriptData.pm
@@ -9,6 +20,7 @@ lib/Monitoring/Generator/TestConfig/ServiceCheckData.pm
 lib/Monitoring/Generator/TestConfig/ShinkenInitScriptData.pm
 Makefile.PL
 MANIFEST			This list of files
+META.yml
 README
 t/01-Monitoring-Generator-TestConfig-internals.t
 t/10-Test-Config-Creation.t
