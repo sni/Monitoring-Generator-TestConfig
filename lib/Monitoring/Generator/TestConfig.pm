@@ -11,6 +11,8 @@ use Monitoring::Generator::TestConfig::ServiceCheckData;
 use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
 use Monitoring::Generator::TestConfig::P1Data;
+use Monitoring::Generator::TestConfig::Modules::Shinken;
+use Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
 our $VERSION = '0.34';
 
@@ -222,14 +224,13 @@ sub create {
     }
 
     # write out main config file
-    my $mainconfigfilename = 'nagios.cfg';
-    $mainconfigfilename = 'icinga.cfg' if $self->{'layout'} eq 'icinga';
+    my $mainconfigfilename = $self->{'layout'}.'.cfg';
     open(my $fh, '>', $self->{'output_dir'}.'/'.$mainconfigfilename) or die('cannot write: '.$!);
     print $fh $self->_get_main_cfg();
     close $fh;
 
     # create some missing dirs
-    for my $dir (qw{etc var var/checkresults var/tmp plugins archives init.d}) {
+    for my $dir (qw{etc etc/conf.d var var/checkresults var/tmp plugins archives init.d}) {
         if(!-d $self->{'output_dir'}.'/'.$dir) {
             mkdir($self->{'output_dir'}.'/'.$dir)
                 or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
@@ -248,14 +249,14 @@ sub create {
     $objects = $self->_set_timeperiods_cfg($objects);
     my $exportedFiles = [
         { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" },
-        { file => '/etc/hosts.cfg',                 data => $self->_create_object_conf('host',          $objects->{'host'})         },
-        { file => '/etc/hostgroups.cfg',            data => $self->_create_object_conf('hostgroup',     $objects->{'hostgroup'})    },
-        { file => '/etc/services.cfg',              data => $self->_create_object_conf('service',       $objects->{'service'})      },
-        { file => '/etc/servicegroups.cfg',         data => $self->_create_object_conf('servicegroup',  $objects->{'servicegroup'}) },
-        { file => '/etc/contacts.cfg',              data => $self->_create_object_conf('contactgroup',  $objects->{'contactgroup'})
+        { file => '/etc/conf.d/hosts.cfg',          data => $self->_create_object_conf('host',          $objects->{'host'})         },
+        { file => '/etc/conf.d/hostgroups.cfg',     data => $self->_create_object_conf('hostgroup',     $objects->{'hostgroup'})    },
+        { file => '/etc/conf.d/services.cfg',       data => $self->_create_object_conf('service',       $objects->{'service'})      },
+        { file => '/etc/conf.d/servicegroups.cfg',  data => $self->_create_object_conf('servicegroup',  $objects->{'servicegroup'}) },
+        { file => '/etc/conf.d/contacts.cfg',       data => $self->_create_object_conf('contactgroup',  $objects->{'contactgroup'})
                                                            .$self->_create_object_conf('contact',       $objects->{'contact'})      },
-        { file => '/etc/commands.cfg',              data => $self->_create_object_conf('command',       $objects->{'command'})      },
-        { file => '/etc/timeperiods.cfg',           data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   },
+        { file => '/etc/conf.d/commands.cfg',       data => $self->_create_object_conf('command',       $objects->{'command'})      },
+        { file => '/etc/conf.d/timeperiods.cfg',    data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   },
         { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
         { file => '/plugins/test_servicecheck.pl',  data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => '/plugins/test_hostcheck.pl',     data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
@@ -271,12 +272,15 @@ sub create {
                   )});
     }
     if ($self->{'layout'} eq 'shinken') {
-        push(@{$exportedFiles}, { file => '/etc/shinken-specific.cfg',  data => $self->_get_shinken_specific_cfg() });
-        push(@{$exportedFiles}, { file => '/etc/schedulerd.cfg',        data => $self->_get_shinken_schedulerd_cfg() });
-        push(@{$exportedFiles}, { file => '/etc/pollerd.cfg',           data => $self->_get_shinken_pollerd_cfg() });
-        push(@{$exportedFiles}, { file => '/etc/brokerd.cfg',           data => $self->_get_shinken_brokerd_cfg() });
-        push(@{$exportedFiles}, { file => '/etc/reactionnerd.cfg',      data => $self->_get_shinken_reactionnerd_cfg() });
-        push(@{$exportedFiles}, { file => '/init.d/'.$init,             data => 'echo the shinken startup script has not been finished yet'});
+        push(@{$exportedFiles}, { file => '/etc/shinken-specific.cfg',  data => Monitoring::Generator::TestConfig::Modules::Shinken::_get_shinken_specific_cfg($self) });
+        push(@{$exportedFiles}, { file => '/etc/schedulerd.cfg',        data => Monitoring::Generator::TestConfig::Modules::Shinken::_get_shinken_schedulerd_cfg($self) });
+        push(@{$exportedFiles}, { file => '/etc/pollerd.cfg',           data => Monitoring::Generator::TestConfig::Modules::Shinken::_get_shinken_pollerd_cfg($self) });
+        push(@{$exportedFiles}, { file => '/etc/brokerd.cfg',           data => Monitoring::Generator::TestConfig::Modules::Shinken::_get_shinken_brokerd_cfg($self) });
+        push(@{$exportedFiles}, { file => '/etc/reactionnerd.cfg',      data => Monitoring::Generator::TestConfig::Modules::Shinken::_get_shinken_reactionnerd_cfg($self) });
+        push(@{$exportedFiles}, { file => '/init.d/'.$init,             data => Monitoring::Generator::TestConfig::ShinkenInitScriptData->get_init_script(
+                            $self->{'output_dir'},
+                            $self->{'binary'},
+        ) });
     }
 
     # export service dependencies
@@ -285,7 +289,7 @@ sub create {
         $objects = $self->_set_servicedependency_cfg($objects);
         $servicedependency = $self->_create_object_conf('servicedependency', $objects->{'servicedependency'});
     }
-    push(@{$exportedFiles}, { file => '/etc/dependencies.cfg',  data => $servicedependency });
+    push(@{$exportedFiles}, { file => '/etc/conf.d/dependencies.cfg', data => $servicedependency });
 
     for my $exportFile (@{$exportedFiles}) {
         open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
@@ -657,15 +661,7 @@ sub _get_main_cfg {
 
     my $main_cfg = {
         'log_file'                                      => $self->{'output_dir'}.'/var/'.$self->{'layout'}.'.log',
-        'cfg_file'                                      => [
-                                                            $self->{'output_dir'}.'/etc/hosts.cfg',
-                                                            $self->{'output_dir'}.'/etc/services.cfg',
-                                                            $self->{'output_dir'}.'/etc/contacts.cfg',
-                                                            $self->{'output_dir'}.'/etc/commands.cfg',
-                                                            $self->{'output_dir'}.'/etc/timeperiods.cfg',
-                                                            $self->{'output_dir'}.'/etc/hostgroups.cfg',
-                                                            $self->{'output_dir'}.'/etc/servicegroups.cfg',
-                                                           ],
+        'cfg_dir'                                       => $self->{'output_dir'}.'/etc/conf.d',
         'object_cache_file'                             => $self->{'output_dir'}.'/var/objects.cache',
         'precached_object_file'                         => $self->{'output_dir'}.'/var/objects.precache',
         'resource_file'                                 => $self->{'output_dir'}.'/etc/resource.cfg',
@@ -771,145 +767,11 @@ sub _get_main_cfg {
         'max_debug_file_size'                           => 1000000,
     };
 
-    push(@{$main_cfg->{cfg_file}}, $self->{'output_dir'}.'/etc/shinken-specific.cfg') if $self->{'layout'} eq 'shinken';
     $main_cfg->{'use_large_installation_tweaks'} = 1 if ($self->{'hostcount'} * $self->{'services_per_host'} > 2000);
 
     my $merged     = $self->_merge_config_hashes($main_cfg, $self->{'main_cfg'});
     my $confstring = $self->_config_hash_to_string($merged);
     return($confstring);
-}
-
-########################################
-sub _get_shinken_specific_cfg {
-    my $self = shift;
-
-    my $max_workers = ($self->{'hostcount'} * $self->{'services_per_host'}) / 256 / 10; # 100000 services -> 39
-    $max_workers = ($max_workers < 10) ? 10 : abs($max_workers);
-    my $cfg = "
-define scheduler{
-       scheduler_name           scheduler-All
-       address                  localhost
-       port                     7768
-       spare                    0
-       realm                    All
-       weight                   1
-}
-define reactionner{
-       reactionner_name         reactionner-All
-       address                  localhost
-       port                     7769
-       spare                    0
-       realm                    All
-       manage_sub_realms        0
-}
-define poller{
-       poller_name              poller-All
-       address                  localhost
-       port                     7771
-       realm                    All
-       manage_sub_realms        0
-       min_workers              4
-       max_workers              $max_workers
-       processes_by_worker      256
-       polling_interval         1
-}
-define broker{
-       broker_name              broker-All
-       address                  localhost
-       port                     7772
-       spare                    0
-       realm                    All
-       manage_sub_realms        0
-       modules                  Service-Perfdata, Host-Perfdata
-}
-define module{
-       module_name              Service-Perfdata
-       module_type              service_perfdata
-       path                     $self->{'output_dir'}/var/service-perfdata
-}
-define module{
-       module_name              Host-Perfdata
-       module_type              host_perfdata
-       path                     $self->{'output_dir'}/var/host-perfdata
-}
-define realm{
-       realm_name               All
-       default                  1
-}
-";
-    return($cfg);
-}
-
-########################################
-sub _get_shinken_schedulerd_cfg {
-    my $self    = shift;
-
-    my $cfg = "[daemon]
-workdir=$self->{'output_dir'}/var
-pidfile=%(workdir)s/schedulerd.pid
-port=7768
-host=0.0.0.0
-user=$self->{'user'}
-group=$self->{'group'}
-idontcareaboutsecurity=0
-";
-    return($cfg);
-}
-
-########################################
-sub _get_shinken_pollerd_cfg {
-    my $self    = shift;
-
-    my $cfg = "[daemon]
-workdir=$self->{'output_dir'}/var
-pidfile=%(workdir)s/pollerd.pid
-interval_poll=5
-maxfd=1024
-port=7771
-host=0.0.0.0
-user=$self->{'user'}
-group=$self->{'group'}
-idontcareaboutsecurity=no
-";
-    return($cfg);
-}
-
-########################################
-sub _get_shinken_brokerd_cfg {
-    my $self    = shift;
-
-    ($self->{'shinken_dir'} = $self->{'binary'}) =~ s/\/[^\/]*?\/[^\/]*?$//mxg;
-    my $cfg = "[daemon]
-workdir=$self->{'output_dir'}/var
-pidfile=%(workdir)s/brokerd.pid
-interval_poll=5
-maxfd=1024
-port=7772
-host=0.0.0.0
-user=$self->{'user'}
-group=$self->{'group'}
-idontcareaboutsecurity=no
-modulespath=$self->{'shinken_dir'}/modules
-";
-    return($cfg);
-}
-
-########################################
-sub _get_shinken_reactionnerd_cfg {
-    my $self    = shift;
-
-    my $cfg = "[daemon]
-workdir=$self->{'output_dir'}/var
-pidfile=%(workdir)s/reactionnerd.pid
-interval_poll=5
-maxfd=1024
-port=7769
-host=0.0.0.0
-user=$self->{'user'}
-group=$self->{'group'}
-idontcareaboutsecurity=no
-";
-    return($cfg);
 }
 
 ########################################
@@ -1017,6 +879,7 @@ sub _get_recreate_pl {
     my $self  = shift;
     my $pl;
 
+    $Data::Dumper::Sortkeys = 1;
     my $conf =  Dumper($self);
     $conf    =~ s/^\$VAR1\ =\ bless\(\ {//mx;
     $conf    =~ s/},\ 'Monitoring::Generator::TestConfig'\ \);$//mx;
