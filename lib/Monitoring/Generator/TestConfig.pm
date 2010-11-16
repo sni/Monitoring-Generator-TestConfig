@@ -166,6 +166,13 @@ sub new {
     $self->{'user'}  = $user  unless defined $self->{'user'};
     $self->{'group'} = $group unless defined $self->{'group'};
 
+    # we dont want the root user to run the core
+    if($self->{'user'} eq 'root') {
+        print STDERR "warning: root user is not recommended, using user '".$self->{'layout'}."' instead!\n";
+        $self->{'user'}  = $self->{'layout'};
+        $self->{'group'} = $self->{'layout'};
+    }
+
     # try to find a binary in path
     if(!defined $self->{'binary'}) {
         my @possible_bin_locations;
@@ -302,6 +309,11 @@ sub create {
     chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
     chmod 0755, $self->{'output_dir'}.'/init.d/'.$init;
     chmod 0755, $self->{'output_dir'}.'/recreate.pl';
+
+    # check user/group
+    if( $^O ne "MSWin32" and $< == 0 ) {
+        `chown -R $self->{'user'}:$self->{'group'} $self->{'output_dir'}`;
+    }
 
     print "exported ".$self->{'layout'}." test config to: $self->{'output_dir'}\n";
     print "check your configuration with: $self->{'output_dir'}/init.d/".$init." checkconfig\n";

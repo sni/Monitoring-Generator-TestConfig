@@ -112,9 +112,9 @@ my $ngt = Monitoring::Generator::TestConfig->new(
                     'overwrite_dir'             => 1,
                     'prefix'                    => $opt_p,
                     'binary'                    => $opt_b,
-                    'routercount'               => 20,
-                    'hostcount'                 => 200,
-                    'services_per_host'         => 20,
+                    'routercount'               => 10,
+                    'hostcount'                 => 100,
+                    'services_per_host'         => 10,
                     'main_cfg'                  => {
                             'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                         },
