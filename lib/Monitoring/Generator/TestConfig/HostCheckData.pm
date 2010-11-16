@@ -1,6 +1,5 @@
 package Monitoring::Generator::TestConfig::HostCheckData;
 
-use 5.000000;
 use strict;
 use warnings;
 

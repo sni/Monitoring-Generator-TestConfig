@@ -1,6 +1,5 @@
 package Monitoring::Generator::TestConfig::Modules::Shinken;
 
-use 5.000000;
 use strict;
 use warnings;
 use Carp;

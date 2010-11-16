@@ -1,6 +1,6 @@
 package Monitoring::Generator::TestConfig;
 
-use 5.000000;
+use 5.005;
 use strict;
 use warnings;
 use Carp;

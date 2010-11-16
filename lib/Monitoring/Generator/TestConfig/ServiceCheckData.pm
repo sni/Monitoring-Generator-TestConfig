@@ -1,6 +1,5 @@
 package Monitoring::Generator::TestConfig::ServiceCheckData;
 
-use 5.000000;
 use strict;
 use warnings;
 
@@ -290,5 +289,5 @@ sub do_check {
 sub _perfdata {
     $t1 = [gettimeofday];
     $rt = tv_interval $t0, $t1;
-    return "| runtime=$rt" 
+    return "| runtime=$rt"
 }

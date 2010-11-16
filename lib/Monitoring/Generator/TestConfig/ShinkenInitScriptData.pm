@@ -1,7 +1,6 @@
 package # hidden from cpan
     Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
-use 5.000000;
 use strict;
 use warnings;
 
