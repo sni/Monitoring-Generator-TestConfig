@@ -279,6 +279,14 @@ sub create {
         push(@{$exportedFiles}, { file => '/init.d/'.$init,             data => 'echo the shinken startup script has not been finished yet'});
     }
 
+    # export service dependencies
+    my $servicedependency = "";
+    unless ($self->{'skip_dependencys'} ) {
+        $objects = $self->_set_servicedependency_cfg($objects);
+        $servicedependency = $self->_create_object_conf('servicedependency', $objects->{'servicedependency'});
+    }
+    push(@{$exportedFiles}, { file => '/etc/dependencies.cfg',  data => $servicedependency });
+
     for my $exportFile (@{$exportedFiles}) {
         open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
         print $fh $exportFile->{'data'};
@@ -539,6 +547,33 @@ sub _set_servicegroups_cfg {
         { servicegroup_name => 'block',           alias => 'All Blocking Services' };
 
     return($objects);
+}
+
+########################################
+sub _set_servicedependency_cfg {
+    my $self = shift;
+    my $objects = shift;
+
+    $objects->{'servicedependency'} = [] unless defined $objects->{'servicedependency'};
+
+    my $service_size = scalar @{$objects->{'service'}};
+    for(my $x = 2; $x < $service_size; $x+=5) {
+        my $dependent = $objects->{'service'}->[$x];
+        my $master    = $objects->{'service'}->[$x-1];
+        next unless defined $dependent->{'host_name'};
+        next unless defined $master->{'host_name'};
+
+        push @{$objects->{'servicedependency'}}, {
+            'dependent_host_name'           => $dependent->{'host_name'},
+            'dependent_service_description' => $dependent->{'service_description'},
+            'host_name'                     => $master->{'host_name'},
+            'service_description'           => $master->{'service_description'},
+            'execution_failure_criteria'    => 'w,u,c',
+            'notification_failure_criteria' => 'w,u,c',
+        };
+    }
+
+    return $objects;
 }
 
 ########################################
@@ -924,6 +959,8 @@ sub _create_object_conf {
     my $objects = shift;
 
     my $cfg = "";
+    return $cfg unless defined $objects;
+
     for my $obj (@{$objects}) {
         $cfg .= 'define '.$type."{\n";
         for my $key (sort _sort_object_key keys %{$obj}) {
@@ -999,10 +1036,20 @@ EOT
 
 ########################################
 sub _sort_object_key {
+    return -7 if $a eq 'dependent_service_description';
+    return -6 if $a eq 'dependent_host_name';
     return -5 if $a eq 'name';
     return -4 if $a =~ m/_name$/mx;
     return -3 if $a =~ m/_description$/mx;
     return -2 if $a eq 'use';
+
+    return 7 if $b eq 'dependent_service_description';
+    return 6 if $b eq 'dependent_host_name';
+    return 5 if $b eq 'name';
+    return 4 if $b =~ m/_name$/mx;
+    return 3 if $b =~ m/_description$/mx;
+    return 2 if $b eq 'use';
+
     return $a cmp $b;
 }
 
