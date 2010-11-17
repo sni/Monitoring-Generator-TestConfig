@@ -142,10 +142,12 @@ do_stop() {
 # Display status
 #
 do_status() {
+    MODULES=$1
+    [ -z $MODULES ] && MODULES=$SUBMODULES;
     ok=0
     fail=0
     echo "status $NAME: ";
-    for mod in $SUBMODULES; do
+    for mod in $MODULES; do
         pid=`getmodpid $mod`;
         printf "%-15s: " $mod
         if [ ! -z $pid ]; then
@@ -179,16 +181,22 @@ do_start() {
         printf "%-15s: " $mod
         DEBUGCMD=""
         [ $DEBUG = 1 ] && DEBUGCMD="--debug $VAR/${mod}-debug.log"
-        if [ $mod != "arbiter" ]; then
-            output=`$BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
-        else
-            output=`$BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
-        fi
+        `do_status $mod  > /dev/null 2>&1`
         if [ $? = 0 ]; then
-            echo "OK"
+            pid=`getmodpid $mod`;
+            echo "ALREADY RUNNING (pid $pid)"
         else
-            output=`echo $output | tail -1` # only show one line of error output...
-            echo "FAILED $output" 
+            if [ $mod != "arbiter" ]; then
+                output=`$BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
+            else
+                output=`$BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
+            fi
+            if [ $? = 0 ]; then
+                echo "OK"
+            else
+                output=`echo $output | tail -1` # only show one line of error output...
+                echo "FAILED $output" 
+            fi
         fi
     done
 }
@@ -219,8 +227,8 @@ case "$CMD" in
     do_stop
     do_status > /dev/null 2>&1
     case "$?" in
-        0) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-        1) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        0) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
     esac
     ;;
   restart)
@@ -228,7 +236,7 @@ case "$CMD" in
     do_stop
     do_status > /dev/null 2>&1
     case "$?" in
-      0)
+      1)
         do_start
         do_status > /dev/null 2>&1
         case "$?" in
