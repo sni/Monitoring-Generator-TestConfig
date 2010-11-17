@@ -66,6 +66,7 @@ usage() {
     exit 3
 }
 
+DEBUG=0
 if [ -z "$SUBMODULES" ]; then
     SUBMODULES=$AVAIL_MODULES
 else
@@ -74,6 +75,7 @@ else
         found=0
         for mod2 in $AVAIL_MODULES; do
             [ $mod1 = $mod2 ] && found=1;
+            [ $mod1 = "-d" ]  && found=1 && DEBUG=1;
         done
         [ $found = 0 ] && usage
     done
@@ -161,15 +163,17 @@ do_start() {
     echo "starting $NAME: ";
     for mod in $SUBMODULES; do
         printf "%-15s: " $mod
+        DEBUGCMD=""
+        [ $DEBUG = 1 ] && DEBUGCMD="--debug $VAR/${mod}-debug.log"
         if [ $mod != 'arbiter' ]; then
-            $BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg > /dev/null 2>&1
+            output=`$BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
         else
-            $BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg > /dev/null 2>&1
+            output=`$BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
         fi
         if [ $? = 0 ]; then
             echo "OK"
         else
-            echo "FAILED"
+            echo "FAILED $output" | head -1  # only show first line of error output...
         fi
     done
 }
