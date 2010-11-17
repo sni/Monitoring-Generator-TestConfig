@@ -53,20 +53,33 @@ __DATA__
 
 NAME="shinken"
 SCRIPTNAME=$0
-CMD=$1
-shift
-SUBMODULES=$*
 AVAIL_MODULES="scheduler poller reactionner broker arbiter"
 BIN="__BIN__"
 VAR="__PREFIX__/var"
 ETC="__PREFIX__/etc"
 
 usage() {
-    echo "Usage: $SCRIPTNAME {start|stop|restart|status} [ <$AVAIL_MODULES> ]" >&2
+    echo "Usage: $SCRIPTNAME [ -d ] {start|stop|restart|status|check} [ <$AVAIL_MODULES> ]" >&2
+    echo ""                                                                           >&2
+    echo " -d  start module in debug mode, only useful with start|restart"            >&2
+    echo ""                                                                           >&2
     exit 3
 }
 
 DEBUG=0
+while getopts "d" flag; do
+    case "$flag" in
+        d)
+            DEBUG=1
+        ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+CMD=$1
+shift
+SUBMODULES=$*
+
 if [ -z "$SUBMODULES" ]; then
     SUBMODULES=$AVAIL_MODULES
 else
@@ -75,7 +88,6 @@ else
         found=0
         for mod2 in $AVAIL_MODULES; do
             [ $mod1 = $mod2 ] && found=1;
-            [ $mod1 = "-d" ]  && found=1 && DEBUG=1;
         done
         [ $found = 0 ] && usage
     done
@@ -97,7 +109,7 @@ fi
 getmodpid() {
     mod=$1
     pidfile="$VAR/${mod}d.pid"
-    if [ $mod != 'arbiter' ]; then
+    if [ $mod = 'arbiter' ]; then
         pidfile="$VAR/shinken.pid"
     fi
     if [ -s $pidfile ]; then
@@ -160,12 +172,14 @@ do_status() {
 # start our modules
 #
 do_start() {
-    echo "starting $NAME: ";
+    printf "starting $NAME";
+    [ $DEBUG = 1 ] && printf " (DEBUG Mode)"
+    echo ": "
     for mod in $SUBMODULES; do
         printf "%-15s: " $mod
         DEBUGCMD=""
         [ $DEBUG = 1 ] && DEBUGCMD="--debug $VAR/${mod}-debug.log"
-        if [ $mod != 'arbiter' ]; then
+        if [ $mod != "arbiter" ]; then
             output=`$BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
         else
             output=`$BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
@@ -173,9 +187,18 @@ do_start() {
         if [ $? = 0 ]; then
             echo "OK"
         else
-            echo "FAILED $output" | head -1  # only show first line of error output...
+            output=`echo $output | tail -1` # only show one line of error output...
+            echo "FAILED $output" 
         fi
     done
+}
+
+#
+# do the config check
+#
+do_check() {
+    $BIN/shinken-arbiter -v -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1
+    return $?
 }
 
 #
@@ -221,6 +244,13 @@ case "$CMD" in
     ;;
   status)
     do_status
+    ;;
+  check|checkconfig)
+    do_check
+    case "$?" in
+        0) log_end_msg 0 ;;
+        *) log_end_msg 1 ;; # Failed config check
+    esac
     ;;
   *)
     usage;
