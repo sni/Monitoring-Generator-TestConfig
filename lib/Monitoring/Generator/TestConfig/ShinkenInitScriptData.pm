@@ -54,13 +54,29 @@ __DATA__
 NAME="shinken"
 SCRIPTNAME=$0
 CMD=$1
-SUBMODULES=$2
+shift
+SUBMODULES=$*
+AVAIL_MODULES="scheduler poller reactionner broker arbiter"
 BIN="__BIN__"
 VAR="__PREFIX__/var"
 ETC="__PREFIX__/etc"
 
-if [ -z $SUBMODULES ]; then
-    SUBMODULES="scheduler poller reactionner broker arbiter"
+usage() {
+    echo "Usage: $SCRIPTNAME {start|stop|restart|status} [ <$AVAIL_MODULES> ]" >&2
+    exit 3
+}
+
+if [ -z "$SUBMODULES" ]; then
+    SUBMODULES=$AVAIL_MODULES
+else
+    # verify given modules
+    for mod1 in $SUBMODULES; do
+        found=0
+        for mod2 in $AVAIL_MODULES; do
+            [ $mod1 = $mod2 ] && found=1;
+        done
+        [ $found = 0 ] && usage
+    done
 fi
 
 
@@ -122,14 +138,14 @@ do_status() {
             ps -p $pid >/dev/null 2>&1
             if [ $? = 0 ]; then
                 echo "RUNNING (pid $pid)"
-                let ok++
+                ok=$((ok+1))
             else
                 echo "NOT RUNNING"
-                let fail++
+                fail=$((fail+1))
             fi
         else
             echo "NOT RUNNING"
-            let fail++
+            fail=$((fail+1))
         fi
     done
     if [ $fail -gt 0 ]; then
@@ -161,32 +177,35 @@ do_start() {
 #
 # check for our command
 #
-case "$1" in
+case "$CMD" in
   start)
     [ "$VERBOSE" != no ] && log_daemon_msg "Starting $NAME"
     do_start
+    do_status > /dev/null 2>&1
     case "$?" in
-        0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-        2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        0) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+        1) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
     esac
     ;;
   stop)
     [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $NAME"
     do_stop
+    do_status > /dev/null 2>&1
     case "$?" in
-        0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-        2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        0) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+        1) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
     esac
     ;;
   restart)
     [ "$VERBOSE" != no ] && log_daemon_msg "Restarting $NAME"
     do_stop
+    do_status > /dev/null 2>&1
     case "$?" in
-      0|1)
+      0)
         do_start
+        do_status > /dev/null 2>&1
         case "$?" in
             0) log_end_msg 0 ;;
-            1) log_end_msg 1 ;; # Old process is still running
             *) log_end_msg 1 ;; # Failed to start
         esac
         ;;
@@ -200,7 +219,6 @@ case "$1" in
     do_status
     ;;
   *)
-    echo "Usage: $SCRIPTNAME {start|stop|restart|status} [ <scheduler|poller|reactionner|broker|arbiter> ]" >&2
-    exit 3
+    usage;
     ;;
 esac
