@@ -116,7 +116,7 @@ my $ngt = Monitoring::Generator::TestConfig->new(
                     'hostcount'                 => 100,
                     'services_per_host'         => 10,
                     'main_cfg'                  => {
-                            'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
+                            #'broker_module' => '/opt/projects/git/check_mk/livestatus/src/livestatus.o /tmp/live.sock',
                         },
                     'hostfailrate'              => 2, # percentage
                     'servicefailrate'           => 5, # percentage

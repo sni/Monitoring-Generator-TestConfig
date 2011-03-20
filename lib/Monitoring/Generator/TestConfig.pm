@@ -87,11 +87,11 @@ sub new {
                     'hostfailrate'        => 2,
                     'skip_dependencys'    => 0,
                     'router_types'        => {
-                                    'down'         => 20,
-                                    'up'           => 20,
-                                    'flap'         => 20,
+                                    'down'         => 10,
+                                    'up'           => 50,
+                                    'flap'         => 10,
                                     'random'       => 20,
-                                    'pending'      => 20,
+                                    'pending'      => 10,
                                     'block'        => 0,
                         },
                     'host_types'          => {
@@ -295,12 +295,12 @@ sub create {
         { file => $obj_prefix.'/commands.cfg',         data => $self->_create_object_conf('command',       $objects->{'command'})           },
         { file => $plg_prefix.'/test_servicecheck.pl', data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => $plg_prefix.'/test_hostcheck.pl',    data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
+        { file => '/recreate.pl',                      data => $self->_get_recreate_pl()                                                    },
     ];
 
     if($self->{'layout'} ne 'omd') {
         push(@{$exportedFiles}, { file => $obj_prefix.'/timeperiods.cfg',   data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   });
         push(@{$exportedFiles}, { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" });
-        push(@{$exportedFiles}, { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     });
     }
 
     if ($self->{'layout'} eq 'nagios' or $self->{'layout'} eq 'icinga') {
@@ -357,7 +357,7 @@ sub create {
         print "exported ".$self->{'layout'}." test config to: $self->{'output_dir'}\n";
         print "check your configuration with: $self->{'output_dir'}/init.d/".$init." checkconfig\n";
     }
-    #print "configuration can be adjusted and recreated with $self->{'output_dir'}/recreate.pl\n";
+    print "configuration can be adjusted and recreated with $self->{'output_dir'}/recreate.pl\n";
 
     return 1;
 }
