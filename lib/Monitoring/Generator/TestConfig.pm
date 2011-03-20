@@ -981,6 +981,25 @@ __END__
 
 =head1 EXAMPLE
 
+=head2 OMD Users
+
+Using OMD makes generating test configs really easy:
+
+    #> create site test
+    #> su - test
+    OMD[test]:~$ cpan
+    ...
+    Would you like me to configure as much as possible automatically? [yes] <enter>
+    ...
+    cpan[1]> install Monitoring::Generator::TestConfig
+    ...
+    cpan[2]> exit
+    OMD[test]:~$ ./local/lib/perl5/bin/create_monitoring_test_config.pl
+
+After the first installation, configuration can be adjusted in the recreate.pl in your SITE directory.
+
+=head2 Sample Script
+
 Create a sample config with manually overriden host/service settings:
 
     use Monitoring::Generator::TestConfig;

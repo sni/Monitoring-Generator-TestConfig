@@ -44,16 +44,17 @@ sub get_init_script {
 __DATA__
 #!/bin/sh
 #
-# chkconfig: 345 99 01
-# description: __LAYOUT__ network monitor
+### BEGIN INIT INFO
+# Provides:          __LAYOUT__
+# Required-Start:    $syslog
+# Required-Stop:     $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: __LAYOUT__ network monitor
+# Description:       Start and stop the __LAYOUT__ test config
+### END INIT INFO
 #
-# File : __LAYOUT__
-#
-# Author : Jorge Sanchez Aymar (jsanchez@lanchile.cl)
-#
-# Description: Starts and stops the __LAYOUT__ monitor
-#              used to provide network services status.
-#
+# Original Author : Jorge Sanchez Aymar (jsanchez@lanchile.cl)
 
 status___LAYOUT__ () {
 	if ps -p $PID > /dev/null 2>&1; then
