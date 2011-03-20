@@ -6,7 +6,7 @@ create_test_config.pl - create a test configuration
 
 =head1 SYNOPSIS
 
-./create_test_config.pl [ -h ] [ -v ] [ -b <monitoring binary> ] [ -p <prefix> ] [ -l layout ] <directory>
+./create_test_config.pl [ -h ] [ -v ] [ -b <monitoring binary> ] [ -p <prefix> ] [ -l layout ] [ <directory> ]
 
 =head1 DESCRIPTION
 
@@ -95,13 +95,13 @@ if(defined $opt_v) {
     $verbose = 1;
 }
 
-if(!defined $opt_d) {
+if(!defined $opt_d and !defined $ENV{'OMD_ROOT'}) {
     pod2usage( { -verbose => 1, -message => 'no export directory given!' } );
     exit 3;
 }
 
 $opt_p = ""       unless defined $opt_p;
-$opt_l = "nagios" unless defined $opt_l;
+$opt_l = "nagios" unless defined $opt_l or defined $ENV{'OMD_ROOT'};
 
 
 #########################################################################

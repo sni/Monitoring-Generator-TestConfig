@@ -14,7 +14,7 @@ use Monitoring::Generator::TestConfig::P1Data;
 use Monitoring::Generator::TestConfig::Modules::Shinken;
 use Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
-our $VERSION = '0.34';
+our $VERSION = '0.36';
 
 =head1 NAME
 
@@ -43,7 +43,7 @@ Arguments are in key-value pairs.
     verbose                     verbose mode
     output_dir                  export directory
     overwrite_dir               overwrite contents of an existing directory. Default: false
-    layout                      which config should be generated, valid options are "nagios" and "icinga"
+    layout                      which config should be generated, valid options are "nagios", "icinga", "shinken" and "omd"
     user                        user, defaults to the current user
     group                       group, defaults to the current users group
     prefix                      prefix to all hosts / services
@@ -71,7 +71,7 @@ sub new {
     my $self = {
                     'verbose'             => 0,
                     'output_dir'          => undef,
-                    'layout'              => 'nagios',
+                    'layout'              => undef,
                     'user'                => undef,
                     'group'               => undef,
                     'prefix'              => '',
@@ -136,12 +136,33 @@ sub new {
         }
     }
 
-    if(!defined $self->{'output_dir'}) {
-        croak('no output_dir given');
+    if(!defined $self->{'layout'}) {
+        if(defined $ENV{'OMD_ROOT'}) {
+            $self->{'layout'} = "omd";
+        } else {
+            $self->{'layout'} = "nagios";
+        }
     }
 
-    if(!defined $self->{'layout'} or ( $self->{'layout'} ne 'nagios' and $self->{'layout'} ne 'icinga' and $self->{'layout'} ne 'shinken')) {
-        croak('valid layouts are: nagios, icinga, shinken');
+    if($self->{'layout'} ne 'nagios' and $self->{'layout'} ne 'icinga' and $self->{'layout'} ne 'shinken' and $self->{'layout'} ne 'omd') {
+        croak('valid layouts are: nagios, icinga, shinken and omd');
+    }
+
+    # set some defaults for OMD
+    if($self->{'layout'} eq "omd") {
+        if(!defined $ENV{'OMD_ROOT'}) {
+            croak('please use omd layout only as OMD siteuser');
+        }
+        $self->{'output_dir'}       = $ENV{'OMD_ROOT'};
+        $self->{'overwrite_dir'}    = 1;
+        $self->{'binary'}           = $ENV{'OMD_ROOT'}."/bin/nagios";
+        $self->{'user'}             = $ENV{'OMD_SITE'};
+        $self->{'group'}            = $ENV{'OMD_SITE'};
+        $self->{'prefix'}           = $ENV{'OMD_SITE'}."_";
+    }
+
+    if(!defined $self->{'output_dir'}) {
+        croak('no output_dir given');
     }
 
     # strip off last slash
@@ -157,7 +178,7 @@ sub new {
         $user           = getlogin();
         $group          = "nagios";
     } else {
-        $user           = getlogin();
+        $user           = getpwuid($<);
         my @userinfo    = getpwnam($user);
         my @groupinfo   = getgrgid($userinfo[3]);
         $group          = $groupinfo[0];
@@ -226,21 +247,25 @@ sub create {
     # set open umask, so the webserver can read those files
     umask(0022);
 
-    if(!-e $self->{'output_dir'}) {
+    if(!-d $self->{'output_dir'}."/.") {
         mkdir($self->{'output_dir'}) or croak('failed to create output_dir '.$self->{'output_dir'}.':'.$!);
     }
 
     # write out main config file
-    my $mainconfigfilename = $self->{'layout'}.'.cfg';
-    open(my $fh, '>', $self->{'output_dir'}.'/'.$mainconfigfilename) or die('cannot write: '.$!);
-    print $fh $self->_get_main_cfg();
-    close $fh;
+    unless($self->{'layout'} eq 'omd') {
+        my $mainconfigfilename = $self->{'layout'}.'.cfg';
+        open(my $fh, '>', $self->{'output_dir'}.'/'.$mainconfigfilename) or die('cannot write: '.$!);
+        print $fh $self->_get_main_cfg();
+        close $fh;
+    }
 
     # create some missing dirs
-    for my $dir (qw{etc etc/conf.d var var/checkresults var/tmp plugins archives init.d}) {
-        if(!-d $self->{'output_dir'}.'/'.$dir) {
-            mkdir($self->{'output_dir'}.'/'.$dir)
-                or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
+    unless($self->{'layout'} eq 'omd') {
+        for my $dir (qw{etc etc/conf.d var var/checkresults var/tmp plugins archives init.d}) {
+            if(!-d $self->{'output_dir'}.'/'.$dir) {
+                mkdir($self->{'output_dir'}.'/'.$dir)
+                    or croak('failed to create dir ('.$self->{'output_dir'}.'/'.$dir.') :' .$!);
+            }
         }
     }
 
@@ -254,20 +279,30 @@ sub create {
     $objects = $self->_set_contacts_cfg($objects);
     $objects = $self->_set_commands_cfg($objects);
     $objects = $self->_set_timeperiods_cfg($objects);
+    my $obj_prefix = '/etc/conf.d';
+    my $plg_prefix = '/plugins';
+    if($self->{'layout'} eq 'omd') { 
+        $obj_prefix = '/etc/nagios/conf.d/generated';
+        $plg_prefix = '/local/lib/nagios/plugins';
+    }
     my $exportedFiles = [
-        { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" },
-        { file => '/etc/conf.d/hosts.cfg',          data => $self->_create_object_conf('host',          $objects->{'host'})         },
-        { file => '/etc/conf.d/hostgroups.cfg',     data => $self->_create_object_conf('hostgroup',     $objects->{'hostgroup'})    },
-        { file => '/etc/conf.d/services.cfg',       data => $self->_create_object_conf('service',       $objects->{'service'})      },
-        { file => '/etc/conf.d/servicegroups.cfg',  data => $self->_create_object_conf('servicegroup',  $objects->{'servicegroup'}) },
-        { file => '/etc/conf.d/contacts.cfg',       data => $self->_create_object_conf('contactgroup',  $objects->{'contactgroup'})
-                                                           .$self->_create_object_conf('contact',       $objects->{'contact'})      },
-        { file => '/etc/conf.d/commands.cfg',       data => $self->_create_object_conf('command',       $objects->{'command'})      },
-        { file => '/etc/conf.d/timeperiods.cfg',    data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   },
-        { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     },
-        { file => '/plugins/test_servicecheck.pl',  data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
-        { file => '/plugins/test_hostcheck.pl',     data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
+        { file => $obj_prefix.'/hosts.cfg',            data => $self->_create_object_conf('host',          $objects->{'host'})              },
+        { file => $obj_prefix.'/hostgroups.cfg',       data => $self->_create_object_conf('hostgroup',     $objects->{'hostgroup'})         },
+        { file => $obj_prefix.'/services.cfg',         data => $self->_create_object_conf('service',       $objects->{'service'})           },
+        { file => $obj_prefix.'/servicegroups.cfg',    data => $self->_create_object_conf('servicegroup',  $objects->{'servicegroup'})      },
+        { file => $obj_prefix.'/contacts.cfg',         data => $self->_create_object_conf('contactgroup',  $objects->{'contactgroup'})
+                                                              .$self->_create_object_conf('contact',       $objects->{'contact'})           },
+        { file => $obj_prefix.'/commands.cfg',         data => $self->_create_object_conf('command',       $objects->{'command'})           },
+        { file => $plg_prefix.'/test_servicecheck.pl', data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
+        { file => $plg_prefix.'/test_hostcheck.pl',    data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
     ];
+
+    if($self->{'layout'} ne 'omd') {
+        push(@{$exportedFiles}, { file => $obj_prefix.'/timeperiods.cfg',   data => $self->_create_object_conf('timeperiod',    $objects->{'timeperiod'})   });
+        push(@{$exportedFiles}, { file => '/etc/resource.cfg',              data => '$USER1$='.$self->{'output_dir'}."/plugins\n" });
+        push(@{$exportedFiles}, { file => '/recreate.pl',                   data => $self->_get_recreate_pl()                     });
+    }
+
     if ($self->{'layout'} eq 'nagios' or $self->{'layout'} eq 'icinga') {
         push(@{$exportedFiles}, { file => '/plugins/p1.pl',  data => Monitoring::Generator::TestConfig::P1Data->get_p1_script() });
         push(@{$exportedFiles}, { file => '/init.d/'.$init,  data => Monitoring::Generator::TestConfig::InitScriptData->get_init_script(
@@ -296,16 +331,16 @@ sub create {
         $objects = $self->_set_servicedependency_cfg($objects);
         $servicedependency = $self->_create_object_conf('servicedependency', $objects->{'servicedependency'});
     }
-    push(@{$exportedFiles}, { file => '/etc/conf.d/dependencies.cfg', data => $servicedependency });
+    push(@{$exportedFiles}, { file => $obj_prefix.'/dependencies.cfg', data => $servicedependency });
 
     for my $exportFile (@{$exportedFiles}) {
-        open($fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
+        open(my $fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);
         print $fh $exportFile->{'data'};
         close $fh;
     }
 
-    chmod 0755, $self->{'output_dir'}.'/plugins/test_servicecheck.pl';
-    chmod 0755, $self->{'output_dir'}.'/plugins/test_hostcheck.pl';
+    chmod 0755, $self->{'output_dir'}.$plg_prefix.'/test_servicecheck.pl' or die("cannot change modes: $!");
+    chmod 0755, $self->{'output_dir'}.$plg_prefix.'/test_hostcheck.pl'    or die("cannot change modes: $!");
     chmod 0755, $self->{'output_dir'}.'/plugins/p1.pl';
     chmod 0755, $self->{'output_dir'}.'/init.d/'.$init;
     chmod 0755, $self->{'output_dir'}.'/recreate.pl';
@@ -315,8 +350,13 @@ sub create {
         `chown -R $self->{'user'}:$self->{'group'} $self->{'output_dir'}`;
     }
 
-    print "exported ".$self->{'layout'}." test config to: $self->{'output_dir'}\n";
-    print "check your configuration with: $self->{'output_dir'}/init.d/".$init." checkconfig\n";
+    if($self->{'layout'} eq 'omd') {
+        print "exported omd test config to: ".$self->{'output_dir'}.$obj_prefix."\n";
+        print "check your configuration with: ~/etc/init.d/nagios checkconfig\n";
+    } else {
+        print "exported ".$self->{'layout'}." test config to: $self->{'output_dir'}\n";
+        print "check your configuration with: $self->{'output_dir'}/init.d/".$init." checkconfig\n";
+    }
     #print "configuration can be adjusted and recreated with $self->{'output_dir'}/recreate.pl\n";
 
     return 1;
@@ -363,15 +403,15 @@ sub _set_hosts_cfg {
             my $hostgroup = "router";
             my $nr        = sprintf("%0".$nr_length."d", $x);
             my $type      = shift @routertypes;
-            push @router, $self->{'prefix'}."test_router_$nr";
+            push @router, $self->{'prefix'}."router_$nr";
 
             my $host = {
-                'host_name'     => $self->{'prefix'}."test_router_".$nr,
+                'host_name'     => $self->{'prefix'}."router_".$nr,
                 'alias'         => $self->{'prefix'}.$type."_".$nr,
                 'use'           => 'generic-host',
                 'address'       => '127.0.'.$x.'.1',
                 'hostgroups'    => $hostgroup,
-                'check_command' => 'check-host-alive!'.$type,
+                'check_command' => 'test-check-host-alive!'.$type,
                 'icon_image'    => '../../docs/images/switch.png',
             };
             $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
@@ -412,16 +452,16 @@ sub _set_hosts_cfg {
         my $num_router = scalar @router + 1;
         my $cur_router = $x % $num_router;
         my $host = {
-            'host_name'     => $self->{'prefix'}."test_host_".$nr,
+            'host_name'     => $self->{'prefix'}."host_".$nr,
             'alias'         => $self->{'prefix'}.$type."_".$nr,
             'use'           => 'generic-host',
             'address'       => '127.0.'.$cur_router.'.'.($x + 1),
             'hostgroups'    => $hostgroup.','.$type,
-            'check_command' => 'check-host-alive!'.$type,
+            'check_command' => 'test-check-host-alive!'.$type,
         };
         if(defined $router[$cur_router]) {
             $host->{'parents'}       = $router[$cur_router];
-            $host->{'check_command'} = 'check-host-alive-parent!'.$type.'!$HOSTSTATE:'.$router[$cur_router].'$';
+            $host->{'check_command'} = 'test-check-host-alive-parent!'.$type.'!$HOSTSTATE:'.$router[$cur_router].'$';
         }
         $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
 
@@ -507,8 +547,8 @@ sub _set_services_cfg {
             my $type         = shift @servicetypes;
 
             my $service = {
-                'host_name'             => $self->{'prefix'}."test_host_".$host_nr,
-                'service_description'   => $self->{'prefix'}."test_".$type."_".$service_nr,
+                'host_name'             => $self->{'prefix'}."host_".$host_nr,
+                'service_description'   => $self->{'prefix'}.$type."_".$service_nr,
                 'check_command'         => 'check_service!'.$type,
                 'use'                   => 'generic-service',
                 'servicegroups'         => $servicegroup.','.$type,
@@ -599,7 +639,7 @@ sub _set_contacts_cfg {
 
     $objects->{'contactgroup'} = [] unless defined $objects->{'contactgroup'};
     push @{$objects->{'contactgroup'}}, {
-        'contactgroup_name'  =>  'test_contact',
+        'contactgroup_name'  => 'test_contact',
         'alias'              => 'test_contacts_alias',
         'members'            => 'test_contact',
     };
@@ -625,13 +665,18 @@ sub _set_commands_cfg {
     my $self    = shift;
     my $objects = shift;
 
+    my $usr_macro = "USER1";
+    if($self->{'layout'} eq 'omd') {
+        $usr_macro = "USER2";
+    }
+
     $objects->{'command'} = [] unless defined $objects->{'command'};
     push @{$objects->{'command'}}, {
-        'command_name' => 'check-host-alive',
-        'command_line' => '$USER1$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --hostname $HOSTNAME$',
+        'command_name' => 'test-check-host-alive',
+        'command_line' => '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --hostname $HOSTNAME$',
     }, {
-        'command_name' => 'check-host-alive-parent',
-        'command_line' => '$USER1$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --parent-state=$ARG2$ --hostname $HOSTNAME$',
+        'command_name' => 'test-check-host-alive-parent',
+        'command_line' => '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --parent-state=$ARG2$ --hostname $HOSTNAME$',
     }, {
         'command_name' => 'notify-host',
         'command_line' => 'sleep 1 && /bin/true',
@@ -640,7 +685,7 @@ sub _set_commands_cfg {
         'command_line' => 'sleep 1 && /bin/true',
     }, {
         'command_name' => 'check_service',
-        'command_line' => '$USER1$/test_servicecheck.pl --type=$ARG1$ --failchance='.$self->{'servicefailrate'}.'% --previous-state=$SERVICESTATE$ --state-duration=$SERVICEDURATIONSEC$ --total-critical-on-host=$TOTALHOSTSERVICESCRITICAL$ --total-warning-on-host=$TOTALHOSTSERVICESWARNING$ --hostname $HOSTNAME$ --servicedesc $SERVICEDESC$',
+        'command_line' => '$'.$usr_macro.'$/test_servicecheck.pl --type=$ARG1$ --failchance='.$self->{'servicefailrate'}.'% --previous-state=$SERVICESTATE$ --state-duration=$SERVICEDURATIONSEC$ --total-critical-on-host=$TOTALHOSTSERVICESCRITICAL$ --total-warning-on-host=$TOTALHOSTSERVICESWARNING$ --hostname $HOSTNAME$ --servicedesc $SERVICEDESC$',
     };
 
     return($objects);

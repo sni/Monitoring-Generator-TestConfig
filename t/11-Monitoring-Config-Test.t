@@ -81,6 +81,10 @@ for my $name (keys %{$configtests}) {
         isa_ok($mgt, 'Monitoring::Generator::TestConfig');
         $mgt->create();
 
+        if(!defined $ENV{'TEST_AUTHOR'}) {
+            print "skipping further layout test for $layout: set \$ENV{TEST_AUTHOR}\n";
+            next;
+        }
         if(! -x $mgt->{'binary'}) {
             print "skipping further layout test for $layout: $!\n";
             next;

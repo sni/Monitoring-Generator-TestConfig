@@ -15,5 +15,7 @@ resources(
 requires      'File::Which'   => 0;
 test_requires 'Test::More'    => 0.87;
 
+install_script 'bin/create_monitoring_test_config.pl';
+
 auto_install;
 WriteAll;

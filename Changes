@@ -1,5 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.36  Sun Mar 20 12:56:50 CET 2011
+	added omd layout
+
 0.34  Wed Nov 17 14:05:42 CET 2010
 	added init script for shinken layout
 	added sample service dependencys
