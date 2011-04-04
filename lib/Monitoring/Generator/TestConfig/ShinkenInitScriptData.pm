@@ -187,9 +187,9 @@ do_start() {
             echo "ALREADY RUNNING (pid $pid)"
         else
             if [ $mod != "arbiter" ]; then
-                output=`$BIN/shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
+                output=`cd $BIN && ./shinken-${mod} -d -c $ETC/${mod}d.cfg $DEBUGCMD 2>&1`
             else
-                output=`$BIN/shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
+                output=`cd $BIN && ./shinken-${mod} -d -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1`
             fi
             if [ $? = 0 ]; then
                 echo "OK"
