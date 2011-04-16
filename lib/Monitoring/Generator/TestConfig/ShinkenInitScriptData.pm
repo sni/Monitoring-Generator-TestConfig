@@ -101,7 +101,7 @@ fi
 [ -f /etc/default/rcS ] && . /etc/default/rcS
 
 # Define LSB log_* functions.
-. /lib/lsb/init-functions
+[ -f /lib/lsb/init-functions ] && . /lib/lsb/init-functions
 
 #
 # return the pid for a submodule
@@ -194,7 +194,7 @@ do_start() {
             if [ $? = 0 ]; then
                 echo "OK"
             else
-                output=`echo $output | tail -1` # only show one line of error output...
+                output=`echo "$output" | tail -2` # only show last 2 lines of error output...
                 echo "FAILED $output" 
             fi
         fi
@@ -205,7 +205,7 @@ do_start() {
 # do the config check
 #
 do_check() {
-    $BIN/shinken-arbiter -v -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1
+    cd $BIN && ./shinken-arbiter -v -c $ETC/../shinken.cfg -c $ETC/shinken-specific.cfg $DEBUGCMD 2>&1
     return $?
 }
 
