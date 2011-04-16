@@ -181,7 +181,7 @@ do_start() {
         printf "%-15s: " $mod
         DEBUGCMD=""
         [ $DEBUG = 1 ] && DEBUGCMD="--debug $VAR/${mod}-debug.log"
-        `do_status $mod  > /dev/null 2>&1`
+        do_status $mod  > /dev/null 2>&1
         if [ $? = 0 ]; then
             pid=`getmodpid $mod`;
             echo "ALREADY RUNNING (pid $pid)"
@@ -217,16 +217,18 @@ case "$CMD" in
     [ "$VERBOSE" != no ] && log_daemon_msg "Starting $NAME"
     do_start
     do_status > /dev/null 2>&1
-    case "$?" in
+    rc=$?
+    case $rc in
         0) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-        1) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
     esac
+    exit $rc
     ;;
   stop)
     [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $NAME"
     do_stop
     do_status > /dev/null 2>&1
-    case "$?" in
+    case $? in
         0) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
         1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
     esac

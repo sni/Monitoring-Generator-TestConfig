@@ -2,6 +2,7 @@
 
 use Test::More;
 use File::Temp qw{ tempdir };
+use File::Basename;
 use Monitoring::Generator::TestConfig;
 
 my $cleanup = 1;
@@ -90,16 +91,20 @@ for my $name (keys %{$configtests}) {
             next;
         }
 
-        my $testcommands = [
-            $mgt->{'binary'}.' -v '.$test_dir.'/'.$mgt->{'layout'}.'.cfg',
-            $test_dir.'/init.d/'.$mgt->{'layout'}.' checkconfig',
-        ];
-        # add some author tests
-        if($ENV{TEST_AUTHOR} ) {
-            push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' start';
-            push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' status';
-            push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' stop';
+        my $testcommands = [];
+        if($layout eq 'shinken') {
+            my $basedir = dirname($mgt->{'binary'});
+            push @{$testcommands}, "cd ".$basedir." && ".$mgt->{'binary'}.' -v -c '.$test_dir.'/'.$mgt->{'layout'}.'.cfg';
+            push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' checkconfig';
+        } else {
+            push @{$testcommands}, $mgt->{'binary'}.' -v '.$test_dir.'/'.$mgt->{'layout'}.'.cfg';
+            push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' checkconfig';
         }
+
+        # add some more tests
+        push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' start';
+        push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' status';
+        push @{$testcommands}, $test_dir.'/init.d/'.$mgt->{'layout'}.' stop';
 
         for $cmd (@{$testcommands}) {
             open(my $ph, '-|', $cmd) or die('exec "'.$cmd.'" failed: $!');

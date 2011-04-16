@@ -219,7 +219,7 @@ sub new {
     }
 
     if(!defined $self->{'binary'}) {
-        carp('found no monitoring binary in path and none defined by the \'binary\' option, using fallback /usr/bin/nagios');
+        #carp('found no monitoring binary in path and none defined by the \'binary\' option, using fallback /usr/bin/nagios');
         $self->{'binary'} = '/usr/bin/nagios';
     }
 

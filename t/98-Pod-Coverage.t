@@ -14,7 +14,7 @@ if ( not $ENV{TEST_AUTHOR} ) {
 
 eval { require Test::Pod::Coverage; };
 
-if ( $EVAL_ERROR ) {
+if ( $@ ) {
    my $msg = 'Test::Pod::Coverage required to criticise pod';
    plan( skip_all => $msg );
 }
