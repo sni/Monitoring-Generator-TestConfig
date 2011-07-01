@@ -14,7 +14,7 @@ use Monitoring::Generator::TestConfig::P1Data;
 use Monitoring::Generator::TestConfig::Modules::Shinken;
 use Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
-our $VERSION = '0.38';
+our $VERSION = '0.40';
 
 =head1 NAME
 
@@ -332,6 +332,10 @@ sub create {
         $servicedependency = $self->_create_object_conf('servicedependency', $objects->{'servicedependency'});
     }
     push(@{$exportedFiles}, { file => $obj_prefix.'/dependencies.cfg', data => $servicedependency });
+
+    if( !-d $self->{'output_dir'}."/".$obj_prefix ) {
+        mkdir($self->{'output_dir'}."/".$obj_prefix) or croak('failed to create output_dir '.$self->{'output_dir'}."/".$obj_prefix.':'.$!);
+    }
 
     for my $exportFile (@{$exportedFiles}) {
         open(my $fh, '>', $self->{'output_dir'}.$exportFile->{'file'}) or die('cannot write '.$self->{'output_dir'}.$exportFile->{'file'}.': '.$!);

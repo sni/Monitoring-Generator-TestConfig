@@ -9,7 +9,18 @@ use Data::Dumper;
 
 Monitoring::Generator::TestConfig::Modules::Shinken - shinken specificy functions
 
+=head1 METHODS
+
+=over 4
+
+=item new
+
+    returns a shinken module object
+
+=back
+
 =cut
+
 
 ########################################
 sub new {
