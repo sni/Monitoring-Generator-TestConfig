@@ -158,4 +158,5 @@ $ngt->create();
 sub add_dir {
     my $dir = shift;
     $opt_d  = $dir;
+    return;
 }
