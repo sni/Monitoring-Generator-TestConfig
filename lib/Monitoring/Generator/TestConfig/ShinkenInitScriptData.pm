@@ -123,16 +123,28 @@ getmodpid() {
 do_stop() {
     ok=0
     fail=0
-    echo "stoping $NAME...";
     for mod in $SUBMODULES; do
         pid=`getmodpid $mod`;
         printf "%-15s: " $mod
         if [ ! -z $pid ]; then
-            for cpid in $(ps -aef | grep $pid | grep "shinken-" | awk '{print $2}'); do
-                kill $cpid > /dev/null 2>&1
+            maxkill=5
+            running=$(ps -aefw | grep $pid | grep "shinken-" | wc -l)
+            while [ $running -gt 0 -a $maxkill -gt 0 ]; do
+                for cpid in $(ps -aefw | grep $pid | grep "shinken-" | awk '{print $2}' | sort -g -r); do
+                    kill $cpid > /dev/null 2>&1
+                done
+                sleep 1
+                maxkill=$(($maxkill - 1))
+                running=$(ps -aefw | grep $pid | grep "shinken-" | wc -l)
             done
+            if [ $running -gt 0 ]; then
+                echo "failed"
+            else
+                echo "done"
+            fi
+        else
+            echo "done"
         fi
-        echo "done"
     done
     return 0
 }
@@ -232,6 +244,7 @@ case "$CMD" in
         0) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
         1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
     esac
+    exit 0
     ;;
   restart)
     [ "$VERBOSE" != no ] && log_daemon_msg "Restarting $NAME"
