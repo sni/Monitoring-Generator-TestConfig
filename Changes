@@ -1,6 +1,7 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
 0.40  Fri Jul  1 16:19:55 CEST 2011
+	added host/servicecheck cmd line option to override check cmd
 	installation on omd works now out of the box
 
 0.38  Sat Apr 16 15:39:33 CEST 2011

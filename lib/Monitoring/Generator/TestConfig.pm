@@ -49,6 +49,8 @@ Arguments are in key-value pairs.
     prefix                      prefix to all hosts / services
     binary                      path to your nagios/icinga bin
     hostcount                   amount of hosts to export, Default 10
+    hostcheckcmd                use custom hostcheck command line
+    servicecheckcmd             use custom servicecheck command line
     routercount                 amount of router to export, Default 5 ( exported as host and used as parent )
     services_per_host           amount of services per host, Default 10
     host_settings               key/value settings for use in the define host
@@ -79,6 +81,8 @@ sub new {
                     'binary'              => undef,
                     'routercount'         => 5,
                     'hostcount'           => 10,
+                    'hostcheckcmd'        => undef,
+                    'servicecheckcmd'     => undef,
                     'services_per_host'   => 10,
                     'main_cfg'            => {},
                     'host_settings'       => {},
@@ -677,10 +681,10 @@ sub _set_commands_cfg {
     $objects->{'command'} = [] unless defined $objects->{'command'};
     push @{$objects->{'command'}}, {
         'command_name' => 'test-check-host-alive',
-        'command_line' => '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --hostname $HOSTNAME$',
+        'command_line' => (defined $self->{'hostcheckcmd'} ? $self->{'hostcheckcmd'} : '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --hostname $HOSTNAME$'),
     }, {
         'command_name' => 'test-check-host-alive-parent',
-        'command_line' => '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --parent-state=$ARG2$ --hostname $HOSTNAME$',
+        'command_line' => (defined $self->{'hostcheckcmd'} ? $self->{'hostcheckcmd'} : '$'.$usr_macro.'$/test_hostcheck.pl --type=$ARG1$ --failchance='.$self->{'hostfailrate'}.'% --previous-state=$HOSTSTATE$ --state-duration=$HOSTDURATIONSEC$ --parent-state=$ARG2$ --hostname $HOSTNAME$'),
     }, {
         'command_name' => 'notify-host',
         'command_line' => 'sleep 1 && /bin/true',
@@ -689,7 +693,7 @@ sub _set_commands_cfg {
         'command_line' => 'sleep 1 && /bin/true',
     }, {
         'command_name' => 'check_service',
-        'command_line' => '$'.$usr_macro.'$/test_servicecheck.pl --type=$ARG1$ --failchance='.$self->{'servicefailrate'}.'% --previous-state=$SERVICESTATE$ --state-duration=$SERVICEDURATIONSEC$ --total-critical-on-host=$TOTALHOSTSERVICESCRITICAL$ --total-warning-on-host=$TOTALHOSTSERVICESWARNING$ --hostname $HOSTNAME$ --servicedesc $SERVICEDESC$',
+        'command_line' => (defined $self->{'servicecheckcmd'} ? $self->{'servicecheckcmd'} : '$'.$usr_macro.'$/test_servicecheck.pl --type=$ARG1$ --failchance='.$self->{'servicefailrate'}.'% --previous-state=$SERVICESTATE$ --state-duration=$SERVICEDURATIONSEC$ --total-critical-on-host=$TOTALHOSTSERVICESCRITICAL$ --total-warning-on-host=$TOTALHOSTSERVICESWARNING$ --hostname $HOSTNAME$ --servicedesc $SERVICEDESC$'),
     };
 
     return($objects);
