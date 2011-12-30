@@ -26,7 +26,8 @@ sub get_test_hostcheck {
 1;
 
 __DATA__
-#!/usr/bin/env perl
+#!/usr/bin/perl
+# nagios: +epn
 
 =head1 NAME
 
@@ -131,20 +132,22 @@ sub do_check {
     if(defined $opt_v) {
         $verbose = 1;
     }
+
+    #########################################################################
+    # Set Defaults
+    $opt_minimum_outage = 0        unless defined $opt_minimum_outage;
+    $opt_failchance     = '5%'     unless defined $opt_failchance;
+    $opt_previous_state = 'UP'     unless defined $opt_previous_state;
+    $opt_parent_state   = 'UP'     unless defined $opt_parent_state;
+    $opt_type           = 'random' unless defined $opt_type;
+
+    #########################################################################
     if($opt_failchance =~ m/^(\d+)%/) {
         $opt_failchance = $1;
     } else {
         pod2usage( { -verbose => 1, -message => 'failchance must be a percentage' } );
         exit 3;
     }
-
-    #########################################################################
-    # Set Defaults
-    $opt_minimum_outage = 0        unless defined $opt_minimum_outage;
-    $opt_failchance     = 5        unless defined $opt_failchance;
-    $opt_previous_state = 'UP'     unless defined $opt_previous_state;
-    $opt_parent_state   = 'UP'     unless defined $opt_parent_state;
-    $opt_type           = 'random' unless defined $opt_type;
 
     #########################################################################
     my $states = {
