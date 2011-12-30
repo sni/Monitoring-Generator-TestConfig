@@ -379,7 +379,7 @@ sub _set_hosts_cfg {
     $objects->{'host'} = [] unless defined $objects->{'host'};
 
     my $hostconfig = {
-        'name'                           => 'generic-host',
+        'name'                           => 'generic-mgt-test-host',
         'notifications_enabled'          => 1,
         'event_handler_enabled'          => 1,
         'flap_detection_enabled'         => 1,
@@ -416,7 +416,7 @@ sub _set_hosts_cfg {
             my $host = {
                 'host_name'     => $self->{'prefix'}."router_".$nr,
                 'alias'         => $self->{'prefix'}.$type."_".$nr,
-                'use'           => 'generic-host',
+                'use'           => 'generic-mgt-test-host',
                 'address'       => '127.0.'.$x.'.1',
                 'hostgroups'    => $hostgroup,
                 'check_command' => 'test-check-host-alive!'.$type,
@@ -462,7 +462,7 @@ sub _set_hosts_cfg {
         my $host = {
             'host_name'     => $self->{'prefix'}."host_".$nr,
             'alias'         => $self->{'prefix'}.$type."_".$nr,
-            'use'           => 'generic-host',
+            'use'           => 'generic-mgt-test-host',
             'address'       => '127.0.'.$cur_router.'.'.($x + 1),
             'hostgroups'    => $hostgroup.','.$type,
             'check_command' => 'test-check-host-alive!'.$type,
@@ -511,7 +511,7 @@ sub _set_services_cfg {
     $objects->{'service'} = [] unless defined $objects->{'service'};
 
     my $serviceconfig = {
-        'name'                            => 'generic-service',
+        'name'                            => 'generic-mgt-test-service',
         'active_checks_enabled'           => 1,
         'passive_checks_enabled'          => 1,
         'parallelize_check'               => 1,
@@ -558,7 +558,7 @@ sub _set_services_cfg {
                 'host_name'             => $self->{'prefix'}."host_".$host_nr,
                 'service_description'   => $self->{'prefix'}.$type."_".$service_nr,
                 'check_command'         => 'check_service!'.$type,
-                'use'                   => 'generic-service',
+                'use'                   => 'generic-mgt-test-service',
                 'servicegroups'         => $servicegroup.','.$type,
             };
 

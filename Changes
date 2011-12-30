@@ -3,6 +3,7 @@ Revision history for Perl extension Monitoring::Generator::TestConfig.
 0.42  Fri Dec 30 11:24:48 CET 2011
 	preserve 'use lib' lines in recreate.pl
 	made host/service check plugins epn compliant
+	renamed default template to avoid naming conflicts with existing templates
 
 0.40  Fri Jul  1 16:19:55 CEST 2011
 	added host/servicecheck cmd line option to override check cmd
