@@ -14,7 +14,7 @@ use Monitoring::Generator::TestConfig::P1Data;
 use Monitoring::Generator::TestConfig::Modules::Shinken;
 use Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
-our $VERSION = '0.40';
+our $VERSION = '0.42';
 
 =head1 NAME
 
@@ -285,7 +285,7 @@ sub create {
     $objects = $self->_set_timeperiods_cfg($objects);
     my $obj_prefix = '/etc/conf.d';
     my $plg_prefix = '/plugins';
-    if($self->{'layout'} eq 'omd') { 
+    if($self->{'layout'} eq 'omd') {
         $obj_prefix = '/etc/nagios/conf.d/generated';
         $plg_prefix = '/local/lib/nagios/plugins';
     }
@@ -299,7 +299,7 @@ sub create {
         { file => $obj_prefix.'/commands.cfg',         data => $self->_create_object_conf('command',       $objects->{'command'})           },
         { file => $plg_prefix.'/test_servicecheck.pl', data => Monitoring::Generator::TestConfig::ServiceCheckData->get_test_servicecheck() },
         { file => $plg_prefix.'/test_hostcheck.pl',    data => Monitoring::Generator::TestConfig::HostCheckData->get_test_hostcheck()       },
-        { file => '/recreate.pl',                      data => $self->_get_recreate_pl()                                                    },
+        { file => '/recreate.pl',                      data => $self->_get_recreate_pl($self->_get_used_libs($self->{'output_dir'}.'/recreate.pl')) },
     ];
 
     if($self->{'layout'} ne 'omd') {
@@ -942,6 +942,7 @@ sub _get_types {
 ########################################
 sub _get_recreate_pl {
     my $self  = shift;
+    my $libs  = shift || '';
     my $pl;
 
     $Data::Dumper::Sortkeys = 1;
@@ -951,6 +952,7 @@ sub _get_recreate_pl {
 
     $pl  = <<EOT;
 #!$^X
+$libs
 use Monitoring::Generator::TestConfig;
 my \$ngt = Monitoring::Generator::TestConfig->new(
 $conf
@@ -979,6 +981,20 @@ sub _sort_object_key {
     return 2 if $b eq 'use';
 
     return $a cmp $b;
+}
+
+########################################
+sub _get_used_libs {
+    my($self, $file) = @_;
+    my $libs = '';
+    return $libs unless -r $file;
+    open(my $fh, '<', $file) or die('cannot read file '.$file.': '.$!);
+    while(my $line = <$fh>) {
+        next unless $line =~ m/^\s*use\s+lib\s+/gmx;
+        $libs .= $line;
+    }
+    close($fh);
+    return $libs;
 }
 
 1;
