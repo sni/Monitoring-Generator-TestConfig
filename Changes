@@ -1,5 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
+0.44  not yet released...
+	added receiver to shinken init script
+
 0.42  Fri Dec 30 11:24:48 CET 2011
 	preserve 'use lib' lines in recreate.pl
 	made host/service check plugins epn compliant

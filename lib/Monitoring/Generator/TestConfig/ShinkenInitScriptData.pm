@@ -53,7 +53,7 @@ __DATA__
 
 NAME="shinken"
 SCRIPTNAME=$0
-AVAIL_MODULES="scheduler poller reactionner broker arbiter"
+AVAIL_MODULES="scheduler poller reactionner broker arbiter receiver"
 BIN="__BIN__"
 VAR="__PREFIX__/var"
 ETC="__PREFIX__/etc"
