@@ -1,7 +1,8 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
-0.44  not yet released...
+0.44  Tue Oct  9 20:47:03 CEST 2012
 	added receiver to shinken init script
+	added option to fixed size hostnames / descriptions
 
 0.42  Fri Dec 30 11:24:48 CET 2011
 	preserve 'use lib' lines in recreate.pl
