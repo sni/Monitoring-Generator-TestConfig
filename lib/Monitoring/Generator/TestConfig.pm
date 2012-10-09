@@ -90,6 +90,7 @@ sub new {
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
                     'skip_dependencys'    => 0,
+                    'fixed_length'        => 0,
                     'router_types'        => {
                                     'down'         => 10,
                                     'up'           => 50,
@@ -406,7 +407,7 @@ sub _set_hosts_cfg {
     if($self->{'routercount'} > 0) {
         my @routertypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'routercount'}, $self->{'router_types'}))};
 
-        my $nr_length = length($self->{'routercount'});
+        my $nr_length = $self->{'fixed_length'} || length($self->{'routercount'});
         for(my $x = 0; $x < $self->{'routercount'}; $x++) {
             my $hostgroup = "router";
             my $nr        = sprintf("%0".$nr_length."d", $x);
@@ -448,7 +449,7 @@ sub _set_hosts_cfg {
     # hosts
     my @hosttypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'}, $self->{'host_types'}))};
 
-    my $nr_length = length($self->{'hostcount'});
+    my $nr_length = $self->{'fixed_length'} || length($self->{'hostcount'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         my $hostgroup = "hostgroup_01";
         $hostgroup    = "hostgroup_02" if $x%5 == 1;
@@ -541,8 +542,8 @@ sub _set_services_cfg {
 
     my @servicetypes = @{$self->_fisher_yates_shuffle($self->_get_types($self->{'hostcount'} * $self->{'services_per_host'}, $self->{'service_types'}))};
 
-    my $hostnr_length    = length($self->{'hostcount'});
-    my $servicenr_length = length($self->{'services_per_host'});
+    my $hostnr_length    = $self->{'fixed_length'} || length($self->{'hostcount'});
+    my $servicenr_length = $self->{'fixed_length'} || length($self->{'services_per_host'});
     for(my $x = 0; $x < $self->{'hostcount'}; $x++) {
         my $host_nr = sprintf("%0".$hostnr_length."d", $x);
         for(my $y = 0; $y < $self->{'services_per_host'}; $y++) {
