@@ -663,7 +663,7 @@ sub _set_contacts_cfg {
         'host_notification_options'     => 'd,r',
         'service_notification_commands' => 'notify-service',
         'host_notification_commands'    => 'notify-host',
-        'email'                         => 'nobody\@localhost',
+        'email'                         => 'nobody@localhost',
     };
 
     return($objects);
