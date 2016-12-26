@@ -948,7 +948,7 @@ sub _get_recreate_pl {
 
     $Data::Dumper::Sortkeys = 1;
     my $conf =  Dumper($self);
-    $conf    =~ s/^\$VAR1\ =\ bless\(\ {//mx;
+    $conf    =~ s/^\$VAR1\ =\ bless\(\ \{//mx;
     $conf    =~ s/},\ 'Monitoring::Generator::TestConfig'\ \);$//mx;
 
     $pl  = <<EOT;
