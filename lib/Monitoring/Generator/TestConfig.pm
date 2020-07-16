@@ -5,8 +5,8 @@ use strict;
 use warnings;
 use Carp;
 use POSIX qw(ceil);
-use File::Which;
 use Data::Dumper;
+use IPC::Cmd qw(can_run);
 use Monitoring::Generator::TestConfig::ServiceCheckData;
 use Monitoring::Generator::TestConfig::HostCheckData;
 use Monitoring::Generator::TestConfig::InitScriptData;
@@ -203,13 +203,13 @@ sub new {
     if(!defined $self->{'binary'}) {
         my @possible_bin_locations;
         if($self->{'layout'} eq 'nagios') {
-            $self->{'binary'} = which('nagios3') || which('nagios') || undef;
+            $self->{'binary'} = can_run('nagios3') || can_run('nagios') || undef;
             @possible_bin_locations = qw|/usr/sbin/nagios3 /usr/bin/nagios3 /usr/local/bin/nagios3 /usr/sbin/nagios /usr/bin/nagios /usr/local/bin/nagios|;
         } elsif($self->{'layout'} eq 'icinga' ) {
-            $self->{'binary'} = which('icinga') || undef;
+            $self->{'binary'} = can_run('icinga') || undef;
             @possible_bin_locations = qw|/usr/sbin/icinga /usr/bin/icinga /usr/local/bin/icinga|;
         } elsif($self->{'layout'} eq 'shinken' ) {
-            $self->{'binary'} = which('shinken-arbiter') || '/usr/local/shinken/bin/shinken-arbiter';
+            $self->{'binary'} = can_run('shinken-arbiter') || '/usr/local/shinken/bin/shinken-arbiter';
         }
 
         # still not defined?
