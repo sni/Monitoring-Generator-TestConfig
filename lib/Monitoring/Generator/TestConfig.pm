@@ -14,7 +14,7 @@ use Monitoring::Generator::TestConfig::P1Data;
 use Monitoring::Generator::TestConfig::Modules::Shinken;
 use Monitoring::Generator::TestConfig::ShinkenInitScriptData;
 
-our $VERSION = '0.46';
+our $VERSION = '0.48';
 
 =head1 NAME
 
