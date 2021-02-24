@@ -606,7 +606,7 @@ sub _set_services_cfg {
             };
 
             $service->{'active_checks_enabled'} = '0' if $type eq 'pending';
-            delete $serice->{'servicegroups'} if $self->{'skip_servicegroups'};
+            delete $service->{'servicegroups'} if $self->{'skip_servicegroups'};
 
             # first router gets additional infos
             if($y == 0) {
