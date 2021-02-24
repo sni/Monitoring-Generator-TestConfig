@@ -1,6 +1,6 @@
 Revision history for Perl extension Monitoring::Generator::TestConfig.
 
-next:
+0.50  Wed Feb 24 14:04:57 CET 2021
 	change skip_dependencys to skip_dependencies
 	add underline to contact settings
 	add options to skip hostgroups / servicegroups
