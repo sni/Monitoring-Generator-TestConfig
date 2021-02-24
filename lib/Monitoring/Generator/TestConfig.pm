@@ -62,13 +62,13 @@ Arguments are in key-value pairs.
     router_types                key/value settings for percentage of hosttypes for router
     service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random,block
     skip_dependencys            no service dependencys will be exported
-    contactscount               amount of contacts to export, Default 1
-    contactgroupscount          amount of contactgroups to export, Default 1
-    contactspergroup            amount of contacts to export, Default 1
-    contactsperhost             amount of contacts per host, Default 0
-    contactgroupsperhost        amount of contactgroups per host, Default 1
-    contactsperservice          amount of contacts per service, Default 0
-    contactgroupsperservice     amount of contactgroups per service, Default 1
+    contacts_count              amount of contacts to export, Default 1
+    contactgroups_count         amount of contactgroups to export, Default 1
+    contacts_per_group          amount of contacts to export, Default 1
+    contacts_per_host           amount of contacts per host, Default 0
+    contactgroups_per_host      amount of contactgroups per host, Default 1
+    contacts_per_service        amount of contacts per service, Default 0
+    contactgroups_per_service   amount of contactgroups per service, Default 1
 
 =back
 
@@ -86,13 +86,13 @@ sub new {
                     'prefix'              => '',
                     'overwrite_dir'       => 0,
                     'binary'              => undef,
-                    'contactscount'       => 1,
-                    'contactgroupscount'  => 1,
-                    'contactspergroup'    => 1,
-                    'contactsperhost'     => 0,
-                    'contactgroupsperhost'=> 1,
-                    'contactsperservice'  => 0,
-                    'contactgroupsperservice' => 1,
+                    'contacts_count'      => 1,
+                    'contactgroups_count' => 1,
+                    'contacts_per_group'  => 1,
+                    'contacts_per_host'   => 0,
+                    'contactgroups_per_host' => 1,
+                    'contacts_per_service'  => 0,
+                    'contactgroups_per_service' => 1,
                     'routercount'         => 5,
                     'hostcount'           => 10,
                     'hostcheckcmd'        => undef,
@@ -455,14 +455,14 @@ sub _set_hosts_cfg {
 
             # add contacts
             my @contacts = ();
-            for(my $z = 0; $z < $self->{'contactsperhost'}; $z++) {
+            for(my $z = 0; $z < $self->{'contacts_per_host'}; $z++) {
                 push @contacts, $contactnames->[ rand @{$contactnames} ];
             }
             $host->{'contacts'} = join(',', @contacts) if scalar @contacts > 0;
 
             # add contactgroups
             my @contactgroups = ();
-            for(my $z = 0; $z < $self->{'contactgroupsperhost'}; $z++) {
+            for(my $z = 0; $z < $self->{'contactgroups_per_host'}; $z++) {
                 push @contactgroups, $contactgroupnames->[ rand @{$contactgroupnames} ];
             }
             $host->{'contact_groups'} = join(',', @contactgroups) if scalar @contactgroups > 0;
@@ -502,14 +502,14 @@ sub _set_hosts_cfg {
 
         # add contacts
         my @contacts = ();
-        for(my $z = 0; $z < $self->{'contactsperhost'}; $z++) {
+        for(my $z = 0; $z < $self->{'contacts_per_host'}; $z++) {
             push @contacts, $contactnames->[ rand @{$contactnames} ];
         }
         $host->{'contacts'} = join(',', @contacts) if scalar @contacts > 0;
 
         # add contactgroups
         my @contactgroups = ();
-        for(my $z = 0; $z < $self->{'contactgroupsperhost'}; $z++) {
+        for(my $z = 0; $z < $self->{'contactgroups_per_host'}; $z++) {
             push @contactgroups, $contactgroupnames->[ rand @{$contactgroupnames} ];
         }
         $host->{'contact_groups'} = join(',', @contactgroups) if scalar @contactgroups > 0;
@@ -622,14 +622,14 @@ sub _set_services_cfg {
 
             # add contacts
             my @contacts = ();
-            for(my $z = 0; $z < $self->{'contactsperservice'}; $z++) {
+            for(my $z = 0; $z < $self->{'contacts_per_service'}; $z++) {
                 push @contacts, $contactnames->[ rand @{$contactnames} ];
             }
             $service->{'contacts'} = join(',', @contacts) if scalar @contacts > 0;
 
             # add contactgroups
             my @contactgroups = ();
-            for(my $z = 0; $z < $self->{'contactgroupsperservice'}; $z++) {
+            for(my $z = 0; $z < $self->{'contactgroups_per_service'}; $z++) {
                 push @contactgroups, $contactgroupnames->[ rand @{$contactgroupnames} ];
             }
             $service->{'contact_groups'} = join(',', @contactgroups) if scalar @contactgroups > 0;
@@ -699,8 +699,8 @@ sub _set_contacts_cfg {
 
     $objects->{'contact'} = [] unless defined $objects->{'contact'};
     my @contacts = ();
-    my $nr_length = $self->{'fixed_length'} || length($self->{'contactscount'});
-    for(my $x = 0; $x < $self->{'contactscount'}; $x++) {
+    my $nr_length = $self->{'fixed_length'} || length($self->{'contacts_count'});
+    for(my $x = 0; $x < $self->{'contacts_count'}; $x++) {
         my $nr   = sprintf("%0".$nr_length."d", $x);
         my $name = $self->{'prefix'}."contact_".$nr;
         push @contacts, $name;
@@ -719,11 +719,11 @@ sub _set_contacts_cfg {
 
     my @contactgroups = ();
     $objects->{'contactgroup'} = [] unless defined $objects->{'contactgroup'};
-    $nr_length = $self->{'fixed_length'} || length($self->{'contactgroupscount'});
-    for(my $x = 0; $x < $self->{'contactgroupscount'}; $x++) {
+    $nr_length = $self->{'fixed_length'} || length($self->{'contactgroups_count'});
+    for(my $x = 0; $x < $self->{'contactgroups_count'}; $x++) {
         my $nr = sprintf("%0".$nr_length."d", $x);
         my @members = ();
-        for(my $y = 0; $y < $self->{'contactspergroup'}; $y++) {
+        for(my $y = 0; $y < $self->{'contacts_per_group'}; $y++) {
             push @members, $contacts[ rand @contacts ];
         }
         my $name = $self->{'prefix'}."contactgroup_".$nr;
