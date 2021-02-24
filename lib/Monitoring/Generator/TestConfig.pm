@@ -61,7 +61,7 @@ Arguments are in key-value pairs.
     host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random,block
     router_types                key/value settings for percentage of hosttypes for router
     service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random,block
-    skip_dependencys            no service dependencys will be exported
+    skip_dependencies           no service dependencys will be exported
     contacts_count              amount of contacts to export, Default 1
     contactgroups_count         amount of contactgroups to export, Default 1
     contacts_per_group          amount of contacts to export, Default 1
@@ -103,7 +103,7 @@ sub new {
                     'service_settings'    => {},
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
-                    'skip_dependencys'    => 0,
+                    'skip_dependencies'   => 0,
                     'fixed_length'        => 0,
                     'router_types'        => {
                                     'down'         => 10,
@@ -346,7 +346,7 @@ sub create {
 
     # export service dependencies
     my $servicedependency = "";
-    unless ($self->{'skip_dependencys'} ) {
+    unless ($self->{'skip_dependencies'} ) {
         $objects = $self->_set_servicedependency_cfg($objects);
         $servicedependency = $self->_create_object_conf('servicedependency', $objects->{'servicedependency'});
     }
