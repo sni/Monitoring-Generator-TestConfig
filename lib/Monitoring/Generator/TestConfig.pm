@@ -106,6 +106,8 @@ sub new {
                     'servicefailrate'     => 5,
                     'hostfailrate'        => 2,
                     'skip_dependencies'   => 0,
+                    'skip_hostgroups'     => 0,
+                    'skip_servicegroups'  => 0,
                     'fixed_length'        => 0,
                     'router_types'        => {
                                     'down'         => 10,
