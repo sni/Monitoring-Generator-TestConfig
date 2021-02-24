@@ -61,7 +61,7 @@ Arguments are in key-value pairs.
     host_types                  key/value settings for percentage of hosttypes, possible keys are up,down,flap,random,block
     router_types                key/value settings for percentage of hosttypes for router
     service_types               key/value settings for percentage of servicetypes, possible keys are ok,warning,critical,unknown,flap,random,block
-    skip_dependencies           no service dependencys will be exported
+    skip_dependencies           no service dependencies will be exported
     contacts_count              amount of contacts to export, Default 1
     contactgroups_count         amount of contactgroups to export, Default 1
     contacts_per_group          amount of contacts to export, Default 1
@@ -69,6 +69,8 @@ Arguments are in key-value pairs.
     contactgroups_per_host      amount of contactgroups per host, Default 1
     contacts_per_service        amount of contacts per service, Default 0
     contactgroups_per_service   amount of contactgroups per service, Default 1
+    skip_hostgroups             no hostgroups will be exported
+    skip_servicegroups          no servicegroups will be exported
 
 =back
 
@@ -293,9 +295,9 @@ sub create {
     my $objects = {};
     my($contactnames, $contactgroupnames) = $self->_set_contacts_cfg($objects);
     $objects = $self->_set_hosts_cfg($objects, $contactnames, $contactgroupnames);
-    $objects = $self->_set_hostgroups_cfg($objects);
+    $objects = $self->_set_hostgroups_cfg($objects) unless $self->{'skip_hostgroups'};
     $objects = $self->_set_services_cfg($objects, $contactnames, $contactgroupnames);
-    $objects = $self->_set_servicegroups_cfg($objects);
+    $objects = $self->_set_servicegroups_cfg($objects) unless $self->{'skip_servicegroups'};
     $objects = $self->_set_commands_cfg($objects);
     $objects = $self->_set_timeperiods_cfg($objects);
     my $obj_prefix = '/etc/conf.d';
@@ -436,6 +438,7 @@ sub _set_hosts_cfg {
                 'icon_image'    => '../../docs/images/switch.png',
             };
             $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
+            delete $host->{'hostgroups'} if $self->{'skip_hostgroups'};
 
             # first router gets additional infos
             if($x == 0) {
@@ -499,6 +502,7 @@ sub _set_hosts_cfg {
             $host->{'check_command'} = 'test-check-host-alive-parent!'.$type.'!$HOSTSTATE:'.$router[$cur_router].'$';
         }
         $host->{'active_checks_enabled'} = '0' if $type eq 'pending';
+        delete $host->{'hostgroups'} if $self->{'skip_hostgroups'};
 
         # add contacts
         my @contacts = ();
@@ -602,6 +606,7 @@ sub _set_services_cfg {
             };
 
             $service->{'active_checks_enabled'} = '0' if $type eq 'pending';
+            delete $serice->{'servicegroups'} if $self->{'skip_servicegroups'};
 
             # first router gets additional infos
             if($y == 0) {
