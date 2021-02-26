@@ -23,7 +23,6 @@ requires 'Data::Dumper';
 requires 'IPC::Cmd';
 
 test_requires 'Test::More'    => 0.87;
-test_requires 'File::Which';
 test_requires 'File::Temp';
 test_requires 'File::Basename';
 
